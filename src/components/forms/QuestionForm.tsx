@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,8 @@ import { toast } from "@/components/ui/sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, X, Image } from "lucide-react";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { MultiSelect, Option } from "@/components/ui/multi-select";
 import {
   Form,
   FormControl,
@@ -35,7 +36,7 @@ interface QuestionFormProps {
     class: string;
     subject: string;
     chapter: string;
-    topic: string;
+    topics: string[];
     marks: string;
     difficulty: string;
     questionType?: string;
@@ -87,7 +88,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     class: initialData?.class || "",
     subject: initialData?.subject || "",
     chapter: initialData?.chapter || "",
-    topic: initialData?.topic || "",
+    topics: initialData?.topics || [],
     marks: initialData?.marks || "",
     difficulty: initialData?.difficulty || "",
     questionType: initialData?.questionType || "subjective",
@@ -123,7 +124,60 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   const difficulties = ["Easy", "Medium", "Hard"];
   const questionTypes = ["subjective", "single-correct", "multiple-correct", "true-false", "fill-in-the-blank", "nested"];
   
-  const handleInputChange = (field: string, value: string) => {
+  // Mock chapters based on subject
+  const chaptersBySubject: Record<string, string[]> = {
+    "Physics": ["Mechanics", "Electromagnetism", "Thermodynamics", "Optics", "Modern Physics", "Laws of Motion"],
+    "Chemistry": ["Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry", "Electrochemistry"],
+    "Biology": ["Cell Biology", "Genetics", "Human Physiology", "Ecology", "Evolution"],
+    "Mathematics": ["Algebra", "Geometry", "Calculus", "Trigonometry", "Statistics", "Probability"],
+    "English": ["Grammar", "Literature", "Writing", "Comprehension"],
+    "History": ["Ancient History", "Medieval History", "Modern History", "World Wars"]
+  };
+  
+  // Mock topics based on chapter
+  const topicsByChapter: Record<string, Option[]> = {
+    "Mechanics": [
+      { value: "Newton's Laws", label: "Newton's Laws" },
+      { value: "Kinematics", label: "Kinematics" },
+      { value: "Dynamics", label: "Dynamics" }
+    ],
+    "Electromagnetism": [
+      { value: "Electric Fields", label: "Electric Fields" },
+      { value: "Magnetic Fields", label: "Magnetic Fields" },
+      { value: "Electromagnetic Induction", label: "Electromagnetic Induction" }
+    ],
+    "Thermodynamics": [
+      { value: "Laws of Thermodynamics", label: "Laws of Thermodynamics" },
+      { value: "Heat Transfer", label: "Heat Transfer" },
+      { value: "Entropy", label: "Entropy" }
+    ],
+    "Laws of Motion": [
+      { value: "Newton's First Law", label: "Newton's First Law" },
+      { value: "Newton's Second Law", label: "Newton's Second Law" },
+      { value: "Newton's Third Law", label: "Newton's Third Law" },
+      { value: "Friction", label: "Friction" }
+    ],
+    "Organic Chemistry": [
+      { value: "Hydrocarbons", label: "Hydrocarbons" },
+      { value: "Functional Groups", label: "Functional Groups" },
+      { value: "Isomerism", label: "Isomerism" }
+    ],
+    "Algebra": [
+      { value: "Equations", label: "Equations" },
+      { value: "Polynomials", label: "Polynomials" },
+      { value: "Complex Numbers", label: "Complex Numbers" }
+    ]
+  };
+
+  const getAvailableChapters = () => {
+    return formData.subject ? (chaptersBySubject[formData.subject] || []) : [];
+  };
+
+  const getAvailableTopics = () => {
+    return formData.chapter ? (topicsByChapter[formData.chapter] || []) : [];
+  };
+  
+  const handleInputChange = (field: string, value: string | string[]) => {
     setFormData({
       ...formData,
       [field]: value
@@ -131,8 +185,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleImageUpload = (field: string) => {
-    // Mock image upload - in a real implementation this would open a file picker
-    // and upload the image to a storage service
     const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
     
     setFormData({
@@ -143,7 +195,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleOptionImageUpload = (index: number) => {
-    // Mock image upload for options
     const mockImageUrl = `https://source.unsplash.com/random/400x300?${Math.random()}`;
     
     const newOptions = [...options];
@@ -156,7 +207,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleChildQuestionImageUpload = (index: number) => {
-    // Mock image upload for child questions
     const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
     
     const newChildQuestions = [...childQuestions];
@@ -214,7 +264,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleChildOptionImageUpload = (questionIndex: number, optionIndex: number) => {
-    // Mock image upload for child question options
     const mockImageUrl = `https://source.unsplash.com/random/400x300?${Math.random()}`;
     
     const newChildQuestions = [...childQuestions];
@@ -297,19 +346,16 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const validateFormData = () => {
-    // Validate required fields
     if (!formData.board || !formData.class || !formData.subject || !formData.difficulty || !formData.marks) {
       toast.error("Please fill all required fields");
       return false;
     }
     
-    // Validate question text
     if (!formData.question && !formData.parentQuestion && formData.questionType !== "nested") {
       toast.error("Question text is required");
       return false;
     }
     
-    // For nested questions, validate parent question and child questions
     if (formData.questionType === "nested") {
       if (!formData.parentQuestion) {
         toast.error("Parent question text is required for nested questions");
@@ -321,7 +367,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         return false;
       }
       
-      // Validate each child question
       for (let i = 0; i < childQuestions.length; i++) {
         const childQuestion = childQuestions[i];
         
@@ -337,22 +382,18 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       }
     }
     
-    // Validate question type specific fields
     if (formData.questionType === "single-correct" || formData.questionType === "multiple-correct") {
-      // Check if at least two options exist
       if (options.length < 2) {
         toast.error("At least two options are required");
         return false;
       }
       
-      // Check if options have text
       const emptyOptions = options.some(option => !option.text.trim());
       if (emptyOptions) {
         toast.error("All options must have text");
         return false;
       }
       
-      // For single correct, exactly one option should be marked correct
       if (formData.questionType === "single-correct") {
         const correctCount = options.filter(option => option.isCorrect).length;
         if (correctCount !== 1) {
@@ -361,7 +402,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         }
       }
       
-      // For multiple correct, at least one option should be marked correct
       if (formData.questionType === "multiple-correct") {
         const correctCount = options.filter(option => option.isCorrect).length;
         if (correctCount < 1) {
@@ -371,14 +411,12 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       }
     }
     
-    // Validate rubrics for subjective questions
     if (formData.questionType === "subjective") {
       if (rubrics.length === 0) {
         toast.error("At least one evaluation rubric is required for subjective questions");
         return false;
       }
       
-      // Check if rubrics have criteria and weight
       const invalidRubrics = rubrics.some(rubric => 
         !rubric.criteria.trim() || typeof rubric.weight !== 'number' || rubric.weight <= 0
       );
@@ -387,7 +425,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         return false;
       }
       
-      // Check if weights sum up to 100
       const totalWeight = rubrics.reduce((sum, rubric) => sum + rubric.weight, 0);
       if (totalWeight !== 100) {
         toast.error("Rubric weights must sum up to 100%");
@@ -399,7 +436,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const generateQuestion = async () => {
-    // Validate required fields for AI generation
     if (!formData.board || !formData.class || !formData.subject || !formData.questionType || !formData.difficulty || !formData.marks) {
       toast.error("Please fill syllabus details, question type, difficulty and marks first");
       return;
@@ -407,9 +443,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     
     setIsGenerating(true);
     
-    // Mock AI generation - in a real implementation this would call an AI service
     setTimeout(() => {
-      // Generate a question based on the form data and question type
       let generatedQuestion = "";
       let generatedAnswer = "";
       let generatedOptions: OptionItem[] = [];
@@ -417,11 +451,10 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       let generatedParentQuestion = "";
       let generatedChildQuestions: ChildQuestionItem[] = [];
       
-      // Generate content based on question type and subject
       if (formData.questionType === "nested") {
         generatedParentQuestion = formData.subject === "Physics" 
           ? "Answer the following questions about Newton's Laws of Motion:" 
-          : `Answer the following questions about ${formData.topic || "this topic"}:`;
+          : `Answer the following questions about ${formData.topics.length ? formData.topics[0] : "this topic"}:`;
           
         if (formData.subject === "Physics") {
           generatedChildQuestions = [
@@ -462,17 +495,17 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         } else {
           generatedChildQuestions = [
             {
-              question: `Explain the key concepts related to ${formData.topic || "this topic"}.`,
+              question: `Explain the key concepts related to ${formData.topics.length ? formData.topics[0] : "this topic"}.`,
               marks: 3,
               answer: "The key concepts include..."
             },
             {
-              question: `Describe the importance of ${formData.topic || "this topic"} in modern applications.`,
+              question: `Describe the importance of ${formData.topics.length ? formData.topics[0] : "this topic"} in modern applications.`,
               marks: 3,
               answer: "The importance can be seen in various applications..."
             },
             {
-              question: `Analyze the challenges faced in implementing ${formData.topic || "this topic"}.`,
+              question: `Analyze the challenges faced in implementing ${formData.topics.length ? formData.topics[0] : "this topic"}.`,
               marks: 4,
               answer: "The challenges include..."
             }
@@ -480,8 +513,8 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         }
       } else if (formData.questionType === "subjective") {
         if (formData.subject === "Physics") {
-          generatedQuestion = "Elaborate on the working principle of a nuclear reactor and discuss the safety mechanisms employed to prevent nuclear accidents.";
-          generatedAnswer = "A nuclear reactor operates on the principle of controlled nuclear fission...";
+          generatedQuestion = "<p>Elaborate on the working principle of a nuclear reactor and discuss the safety mechanisms employed to prevent nuclear accidents.</p>";
+          generatedAnswer = "<p>A nuclear reactor operates on the principle of controlled nuclear fission...</p>";
           generatedRubrics = [
             { criteria: "Understanding of nuclear fission", weight: 25 },
             { criteria: "Description of reactor components", weight: 25 },
@@ -489,16 +522,16 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
             { criteria: "Discussion of potential risks", weight: 20 }
           ];
         } else if (formData.subject === "Mathematics") {
-          generatedQuestion = "Prove that the sum of interior angles in a polygon with n sides is (n-2) × 180°.";
-          generatedAnswer = "To prove this theorem, we can use the triangulation of polygons...";
+          generatedQuestion = "<p>Prove that the sum of interior angles in a polygon with n sides is (n-2) × 180°.</p>";
+          generatedAnswer = "<p>To prove this theorem, we can use the triangulation of polygons...</p>";
           generatedRubrics = [
             { criteria: "Correct approach to proof", weight: 40 },
             { criteria: "Mathematical reasoning", weight: 30 },
             { criteria: "Clarity of explanation", weight: 30 }
           ];
         } else {
-          generatedQuestion = `Explain the significance of ${formData.topic || "this topic"} in the context of ${formData.subject}.`;
-          generatedAnswer = "The significance of this topic can be understood through...";
+          generatedQuestion = `<p>Explain the significance of ${formData.topics.length ? formData.topics[0] : "this topic"} in the context of ${formData.subject}.</p>`;
+          generatedAnswer = "<p>The significance of this topic can be understood through...</p>";
           generatedRubrics = [
             { criteria: "Content accuracy", weight: 40 },
             { criteria: "Critical analysis", weight: 30 },
@@ -508,7 +541,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       } else if (formData.questionType === "single-correct" || formData.questionType === "multiple-correct") {
         if (formData.subject === "Physics") {
           if (formData.questionType === "single-correct") {
-            generatedQuestion = "Which of the following is a unit of force?";
+            generatedQuestion = "<p>Which of the following is a unit of force?</p>";
             generatedOptions = [
               { text: "Newton", isCorrect: true },
               { text: "Joule", isCorrect: false },
@@ -516,7 +549,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
               { text: "Coulomb", isCorrect: false }
             ];
           } else {
-            generatedQuestion = "Which of the following are vector quantities?";
+            generatedQuestion = "<p>Which of the following are vector quantities?</p>";
             generatedOptions = [
               { text: "Force", isCorrect: true },
               { text: "Velocity", isCorrect: true },
@@ -526,7 +559,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
           }
         } else if (formData.subject === "Mathematics") {
           if (formData.questionType === "single-correct") {
-            generatedQuestion = "What is the derivative of sin(x) with respect to x?";
+            generatedQuestion = "<p>What is the derivative of sin(x) with respect to x?</p>";
             generatedOptions = [
               { text: "cos(x)", isCorrect: true },
               { text: "-sin(x)", isCorrect: false },
@@ -534,7 +567,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
               { text: "-cos(x)", isCorrect: false }
             ];
           } else {
-            generatedQuestion = "Which of the following are prime numbers?";
+            generatedQuestion = "<p>Which of the following are prime numbers?</p>";
             generatedOptions = [
               { text: "2", isCorrect: true },
               { text: "3", isCorrect: true },
@@ -545,20 +578,19 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         }
       } else if (formData.questionType === "true-false") {
         generatedQuestion = formData.subject === "Physics" ? 
-          "Light travels faster than sound. State whether true or false." : 
-          "Every prime number greater than 2 is odd. State whether true or false.";
+          "<p>Light travels faster than sound. State whether true or false.</p>" : 
+          "<p>Every prime number greater than 2 is odd. State whether true or false.</p>";
         generatedOptions = [
           { text: "True", isCorrect: true },
           { text: "False", isCorrect: false }
         ];
       } else if (formData.questionType === "fill-in-the-blank") {
         generatedQuestion = formData.subject === "Physics" ? 
-          "The SI unit of electric current is __________." :
-          "The value of π (pi) up to 2 decimal places is __________.";
+          "<p>The SI unit of electric current is __________.</p>" :
+          "<p>The value of π (pi) up to 2 decimal places is __________.</p>";
         generatedAnswer = formData.subject === "Physics" ? "ampere" : "3.14";
       }
       
-      // Update the form with generated content
       if (formData.questionType === "nested") {
         setFormData({
           ...formData,
@@ -595,7 +627,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     
     setIsSubmitting(true);
     
-    // Prepare data for submission
     const questionData = {
       ...formData,
       options: formData.questionType === "single-correct" || formData.questionType === "multiple-correct" || formData.questionType === "true-false" ? options : undefined,
@@ -603,7 +634,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       childQuestions: formData.questionType === "nested" ? childQuestions : undefined
     };
     
-    // Mock submission - in a real implementation this would be an API call
     setTimeout(() => {
       setIsSubmitting(false);
       toast.success(isEdit ? "Question updated successfully!" : "Question created successfully!");
@@ -615,7 +645,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     return formData.board && formData.class && formData.subject && formData.questionType && formData.difficulty && formData.marks;
   };
   
-  // Handle question type change
   useEffect(() => {
     if (formData.questionType === "true-false") {
       setOptions([
@@ -683,7 +712,11 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
           <Label htmlFor="subject">Subject *</Label>
           <Select 
             value={formData.subject} 
-            onValueChange={(value) => handleInputChange("subject", value)}
+            onValueChange={(value) => {
+              handleInputChange("subject", value);
+              handleInputChange("chapter", "");
+              handleInputChange("topics", []);
+            }}
             disabled={isView || isEdit}
             required
           >
@@ -701,24 +734,37 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         </div>
         
         <div>
-          <Label htmlFor="chapter">Chapter</Label>
-          <Input
-            id="chapter"
-            placeholder="Enter chapter name"
+          <Label htmlFor="chapter">Chapter *</Label>
+          <Select
             value={formData.chapter}
-            onChange={(e) => handleInputChange("chapter", e.target.value)}
-            disabled={isView || isEdit}
-          />
+            onValueChange={(value) => {
+              handleInputChange("chapter", value);
+              handleInputChange("topics", []);
+            }}
+            disabled={isView || isEdit || !formData.subject}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select chapter" />
+            </SelectTrigger>
+            <SelectContent>
+              {getAvailableChapters().map((chapter) => (
+                <SelectItem key={chapter} value={chapter}>
+                  {chapter}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         <div>
-          <Label htmlFor="topic">Topic</Label>
-          <Input
-            id="topic"
-            placeholder="Enter topic name"
-            value={formData.topic}
-            onChange={(e) => handleInputChange("topic", e.target.value)}
-            disabled={isView || isEdit}
+          <Label htmlFor="topic">Topics *</Label>
+          <MultiSelect
+            options={getAvailableTopics()}
+            selected={formData.topics}
+            onChange={(topics) => handleInputChange("topics", topics)}
+            placeholder="Select topics"
+            disabled={isView || isEdit || !formData.chapter}
           />
         </div>
         
@@ -832,16 +878,14 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
             </div>
           )}
           
-          <Textarea
-            id="question"
-            placeholder="Enter question text here"
-            value={formData.question}
-            onChange={(e) => handleInputChange("question", e.target.value)}
-            rows={5}
-            disabled={isView}
-            required
-            className="mt-1"
-          />
+          <div className="min-h-[200px] border rounded-md">
+            <RichTextEditor
+              value={formData.question}
+              onChange={(value) => handleInputChange("question", value)}
+              placeholder="Enter question text here"
+              readOnly={isView}
+            />
+          </div>
         </div>
       ) : (
         <div className="space-y-4 border p-4 rounded-md bg-gray-50">
@@ -889,16 +933,14 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
             </div>
           )}
           
-          <Textarea
-            id="parentQuestion"
-            placeholder="Enter parent question text here (e.g., 'Answer the following questions:')"
-            value={formData.parentQuestion}
-            onChange={(e) => handleInputChange("parentQuestion", e.target.value)}
-            rows={3}
-            disabled={isView}
-            required
-            className="mt-1"
-          />
+          <div className="min-h-[150px] border rounded-md">
+            <RichTextEditor
+              value={formData.parentQuestion}
+              onChange={(value) => handleInputChange("parentQuestion", value)}
+              placeholder="Enter parent question text here (e.g., 'Answer the following questions:')"
+              readOnly={isView}
+            />
+          </div>
           
           <div className="flex justify-between items-center mt-4">
             <h3 className="text-lg font-medium">Child Questions</h3>
@@ -961,16 +1003,14 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
                   </div>
                 )}
                 
-                <Textarea
-                  id={`childQuestion-${index}`}
-                  placeholder="Enter child question text here"
-                  value={childQuestion.question}
-                  onChange={(e) => handleChildQuestionChange(index, "question", e.target.value)}
-                  rows={3}
-                  disabled={isView}
-                  required
-                  className="mt-1"
-                />
+                <div className="min-h-[100px] border rounded-md">
+                  <RichTextEditor
+                    value={childQuestion.question}
+                    onChange={(value) => handleChildQuestionChange(index, "question", value)}
+                    placeholder="Enter child question text here"
+                    readOnly={isView}
+                  />
+                </div>
                 
                 <div className="flex items-center gap-4">
                   <div className="w-1/4">

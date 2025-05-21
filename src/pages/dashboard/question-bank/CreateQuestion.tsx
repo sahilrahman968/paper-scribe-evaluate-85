@@ -1,5 +1,5 @@
 
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import QuestionForm from "@/components/forms/QuestionForm";
@@ -31,7 +31,10 @@ interface Question {
 }
 
 const CreateQuestion = () => {
-  const { id, mode } = useParams();
+  const params = useParams();
+  const id = params.id;
+  const mode = params.mode;
+  
   const [isLoading, setIsLoading] = useState(false);
   const [questionData, setQuestionData] = useState<Question | null>(null);
 
