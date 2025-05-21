@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, Filter, ArrowUp, ArrowDown } from "lucide-react";
@@ -32,6 +31,7 @@ interface Question {
 }
 
 const QuestionBank = () => {
+  
   const [questions, setQuestions] = useState<Question[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
@@ -120,6 +120,7 @@ const QuestionBank = () => {
     setQuestions(mockQuestions);
   }, []);
 
+  
   const handleSort = (field: keyof Question) => {
     if (field === sortField) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -425,7 +426,7 @@ const QuestionBank = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
-                        to={`/dashboard/question-bank/${question.id}`}
+                        to={`/dashboard/question-bank/${question.id}/view`}
                         className="text-indigo-600 hover:text-indigo-900 mr-4"
                       >
                         View
@@ -439,6 +440,14 @@ const QuestionBank = () => {
                     </td>
                   </tr>
                 ))}
+
+                {filteredQuestions.length === 0 && (
+                  <tr>
+                    <td className="px-6 py-8 text-center text-gray-500" colSpan={5}>
+                      No questions found. Try adjusting your filters or adding a new question.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

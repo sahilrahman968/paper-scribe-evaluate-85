@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,20 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Image } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface QuestionFormProps {
   type: "manual" | "ai";
   initialData?: {
+    id?: number;
     question: string;
     answer?: string;
     board: string;
@@ -30,10 +39,21 @@ interface QuestionFormProps {
     marks: string;
     difficulty: string;
     questionType?: string;
-    options?: { text: string; isCorrect: boolean }[];
+    options?: { text: string; isCorrect: boolean; image?: string }[];
     rubrics?: { criteria: string; weight: number }[];
+    parentQuestion?: string;
+    parentQuestionImage?: string;
+    childQuestions?: {
+      question: string;
+      questionImage?: string;
+      answer?: string;
+      marks: number;
+      options?: { text: string; isCorrect: boolean; image?: string }[];
+    }[];
+    questionImage?: string;
   };
   isEdit?: boolean;
+  isView?: boolean;
 }
 
 type RubricItem = {
@@ -44,13 +64,23 @@ type RubricItem = {
 type OptionItem = {
   text: string;
   isCorrect: boolean;
+  image?: string;
 };
 
-const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) => {
+type ChildQuestionItem = {
+  question: string;
+  questionImage?: string;
+  answer?: string;
+  marks: number;
+  options?: OptionItem[];
+};
+
+const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: QuestionFormProps) => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    id: initialData?.id,
     question: initialData?.question || "",
     answer: initialData?.answer || "",
     board: initialData?.board || "",
@@ -60,7 +90,10 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
     topic: initialData?.topic || "",
     marks: initialData?.marks || "",
     difficulty: initialData?.difficulty || "",
-    questionType: initialData?.questionType || "subjective"
+    questionType: initialData?.questionType || "subjective",
+    parentQuestion: initialData?.parentQuestion || "",
+    parentQuestionImage: initialData?.parentQuestionImage || "",
+    questionImage: initialData?.questionImage || ""
   });
   
   const [options, setOptions] = useState<OptionItem[]>(
@@ -80,17 +113,59 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
     ]
   );
   
+  const [childQuestions, setChildQuestions] = useState<ChildQuestionItem[]>(
+    initialData?.childQuestions || []
+  );
+  
   const boards = ["CBSE", "ICSE", "State Board"];
   const classes = ["8", "9", "10", "11", "12"];
   const subjects = ["Physics", "Chemistry", "Biology", "Mathematics", "English", "History"];
   const difficulties = ["Easy", "Medium", "Hard"];
-  const questionTypes = ["subjective", "single-correct", "multiple-correct", "true-false", "fill-in-the-blank"];
+  const questionTypes = ["subjective", "single-correct", "multiple-correct", "true-false", "fill-in-the-blank", "nested"];
   
   const handleInputChange = (field: string, value: string) => {
     setFormData({
       ...formData,
       [field]: value
     });
+  };
+  
+  const handleImageUpload = (field: string) => {
+    // Mock image upload - in a real implementation this would open a file picker
+    // and upload the image to a storage service
+    const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
+    
+    setFormData({
+      ...formData,
+      [field]: mockImageUrl
+    });
+    toast.success("Image uploaded successfully!");
+  };
+  
+  const handleOptionImageUpload = (index: number) => {
+    // Mock image upload for options
+    const mockImageUrl = `https://source.unsplash.com/random/400x300?${Math.random()}`;
+    
+    const newOptions = [...options];
+    newOptions[index] = { 
+      ...newOptions[index], 
+      image: mockImageUrl 
+    };
+    setOptions(newOptions);
+    toast.success("Option image uploaded successfully!");
+  };
+  
+  const handleChildQuestionImageUpload = (index: number) => {
+    // Mock image upload for child questions
+    const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
+    
+    const newChildQuestions = [...childQuestions];
+    newChildQuestions[index] = { 
+      ...newChildQuestions[index], 
+      questionImage: mockImageUrl 
+    };
+    setChildQuestions(newChildQuestions);
+    toast.success("Child question image uploaded successfully!");
   };
   
   const handleOptionChange = (index: number, field: "text" | "isCorrect", value: string | boolean) => {
@@ -109,6 +184,55 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
       [field]: value 
     };
     setRubrics(newRubrics);
+  };
+  
+  const handleChildQuestionChange = (index: number, field: string, value: any) => {
+    const newChildQuestions = [...childQuestions];
+    newChildQuestions[index] = { 
+      ...newChildQuestions[index], 
+      [field]: value 
+    };
+    setChildQuestions(newChildQuestions);
+  };
+  
+  const handleChildOptionChange = (questionIndex: number, optionIndex: number, field: "text" | "isCorrect", value: string | boolean) => {
+    const newChildQuestions = [...childQuestions];
+    if (!newChildQuestions[questionIndex].options) {
+      newChildQuestions[questionIndex].options = [];
+    }
+    
+    if (!newChildQuestions[questionIndex].options![optionIndex]) {
+      newChildQuestions[questionIndex].options![optionIndex] = { text: "", isCorrect: false };
+    }
+    
+    newChildQuestions[questionIndex].options![optionIndex] = {
+      ...newChildQuestions[questionIndex].options![optionIndex],
+      [field]: value
+    };
+    
+    setChildQuestions(newChildQuestions);
+  };
+  
+  const handleChildOptionImageUpload = (questionIndex: number, optionIndex: number) => {
+    // Mock image upload for child question options
+    const mockImageUrl = `https://source.unsplash.com/random/400x300?${Math.random()}`;
+    
+    const newChildQuestions = [...childQuestions];
+    if (!newChildQuestions[questionIndex].options) {
+      newChildQuestions[questionIndex].options = [];
+    }
+    
+    if (!newChildQuestions[questionIndex].options![optionIndex]) {
+      newChildQuestions[questionIndex].options![optionIndex] = { text: "", isCorrect: false };
+    }
+    
+    newChildQuestions[questionIndex].options![optionIndex] = {
+      ...newChildQuestions[questionIndex].options![optionIndex],
+      image: mockImageUrl
+    };
+    
+    setChildQuestions(newChildQuestions);
+    toast.success("Option image uploaded successfully!");
   };
   
   const addRubric = () => {
@@ -131,6 +255,47 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
     setOptions(newOptions);
   };
   
+  const addChildQuestion = () => {
+    setChildQuestions([
+      ...childQuestions, 
+      { 
+        question: "", 
+        answer: "", 
+        marks: 1,
+        options: formData.questionType === "nested" ? [
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false }
+        ] : undefined
+      }
+    ]);
+  };
+  
+  const removeChildQuestion = (index: number) => {
+    const newChildQuestions = [...childQuestions];
+    newChildQuestions.splice(index, 1);
+    setChildQuestions(newChildQuestions);
+  };
+  
+  const addChildOption = (questionIndex: number) => {
+    const newChildQuestions = [...childQuestions];
+    if (!newChildQuestions[questionIndex].options) {
+      newChildQuestions[questionIndex].options = [];
+    }
+    
+    newChildQuestions[questionIndex].options!.push({ text: "", isCorrect: false });
+    setChildQuestions(newChildQuestions);
+  };
+  
+  const removeChildOption = (questionIndex: number, optionIndex: number) => {
+    const newChildQuestions = [...childQuestions];
+    if (newChildQuestions[questionIndex].options && newChildQuestions[questionIndex].options!.length > 2) {
+      newChildQuestions[questionIndex].options!.splice(optionIndex, 1);
+      setChildQuestions(newChildQuestions);
+    }
+  };
+  
   const validateFormData = () => {
     // Validate required fields
     if (!formData.board || !formData.class || !formData.subject || !formData.difficulty || !formData.marks) {
@@ -139,9 +304,37 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
     }
     
     // Validate question text
-    if (!formData.question) {
+    if (!formData.question && !formData.parentQuestion && formData.questionType !== "nested") {
       toast.error("Question text is required");
       return false;
+    }
+    
+    // For nested questions, validate parent question and child questions
+    if (formData.questionType === "nested") {
+      if (!formData.parentQuestion) {
+        toast.error("Parent question text is required for nested questions");
+        return false;
+      }
+      
+      if (childQuestions.length === 0) {
+        toast.error("At least one child question is required for nested questions");
+        return false;
+      }
+      
+      // Validate each child question
+      for (let i = 0; i < childQuestions.length; i++) {
+        const childQuestion = childQuestions[i];
+        
+        if (!childQuestion.question) {
+          toast.error(`Child question ${i + 1} text is required`);
+          return false;
+        }
+        
+        if (childQuestion.marks <= 0) {
+          toast.error(`Child question ${i + 1} marks must be greater than 0`);
+          return false;
+        }
+      }
     }
     
     // Validate question type specific fields
@@ -221,9 +414,71 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
       let generatedAnswer = "";
       let generatedOptions: OptionItem[] = [];
       let generatedRubrics: RubricItem[] = [];
+      let generatedParentQuestion = "";
+      let generatedChildQuestions: ChildQuestionItem[] = [];
       
       // Generate content based on question type and subject
-      if (formData.questionType === "subjective") {
+      if (formData.questionType === "nested") {
+        generatedParentQuestion = formData.subject === "Physics" 
+          ? "Answer the following questions about Newton's Laws of Motion:" 
+          : `Answer the following questions about ${formData.topic || "this topic"}:`;
+          
+        if (formData.subject === "Physics") {
+          generatedChildQuestions = [
+            {
+              question: "State Newton's First Law of Motion and give an example from daily life.",
+              marks: 3,
+              answer: "Newton's First Law states that an object at rest stays at rest and an object in motion stays in motion with the same speed and in the same direction unless acted upon by an external force."
+            },
+            {
+              question: "Explain the concept of momentum and its conservation.",
+              marks: 3,
+              answer: "Momentum is the product of mass and velocity. The conservation of momentum states that in a closed system, the total momentum remains constant."
+            },
+            {
+              question: "A 2kg object moving at 5 m/s collides with a stationary 3kg object. If they stick together after collision, what will be their final velocity?",
+              marks: 4,
+              answer: "Using conservation of momentum: m1v1 + m2v2 = (m1 + m2)v_final\n2kg × 5m/s + 3kg × 0m/s = (2kg + 3kg) × v_final\n10kg·m/s = 5kg × v_final\nv_final = 2 m/s"
+            }
+          ];
+        } else if (formData.subject === "Mathematics") {
+          generatedChildQuestions = [
+            {
+              question: "Solve the quadratic equation: x² - 5x + 6 = 0",
+              marks: 2,
+              answer: "Factoring: x² - 5x + 6 = 0\n(x - 3)(x - 2) = 0\nx = 3 or x = 2"
+            },
+            {
+              question: "Calculate the derivative of f(x) = x³ - 4x² + 5x - 7",
+              marks: 3,
+              answer: "f'(x) = 3x² - 8x + 5"
+            },
+            {
+              question: "Find the area of a circle with radius 7 cm.",
+              marks: 2,
+              answer: "A = πr² = π × 7² = 49π cm²"
+            }
+          ];
+        } else {
+          generatedChildQuestions = [
+            {
+              question: `Explain the key concepts related to ${formData.topic || "this topic"}.`,
+              marks: 3,
+              answer: "The key concepts include..."
+            },
+            {
+              question: `Describe the importance of ${formData.topic || "this topic"} in modern applications.`,
+              marks: 3,
+              answer: "The importance can be seen in various applications..."
+            },
+            {
+              question: `Analyze the challenges faced in implementing ${formData.topic || "this topic"}.`,
+              marks: 4,
+              answer: "The challenges include..."
+            }
+          ];
+        }
+      } else if (formData.questionType === "subjective") {
         if (formData.subject === "Physics") {
           generatedQuestion = "Elaborate on the working principle of a nuclear reactor and discuss the safety mechanisms employed to prevent nuclear accidents.";
           generatedAnswer = "A nuclear reactor operates on the principle of controlled nuclear fission...";
@@ -304,18 +559,26 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
       }
       
       // Update the form with generated content
-      setFormData({
-        ...formData,
-        question: generatedQuestion,
-        answer: generatedAnswer
-      });
-      
-      if (generatedOptions.length > 0) {
-        setOptions(generatedOptions);
-      }
-      
-      if (generatedRubrics.length > 0 && formData.questionType === "subjective") {
-        setRubrics(generatedRubrics);
+      if (formData.questionType === "nested") {
+        setFormData({
+          ...formData,
+          parentQuestion: generatedParentQuestion
+        });
+        setChildQuestions(generatedChildQuestions);
+      } else {
+        setFormData({
+          ...formData,
+          question: generatedQuestion,
+          answer: generatedAnswer
+        });
+        
+        if (generatedOptions.length > 0) {
+          setOptions(generatedOptions);
+        }
+        
+        if (generatedRubrics.length > 0 && formData.questionType === "subjective") {
+          setRubrics(generatedRubrics);
+        }
       }
       
       setIsGenerating(false);
@@ -336,7 +599,8 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
     const questionData = {
       ...formData,
       options: formData.questionType === "single-correct" || formData.questionType === "multiple-correct" || formData.questionType === "true-false" ? options : undefined,
-      rubrics: formData.questionType === "subjective" ? rubrics : undefined
+      rubrics: formData.questionType === "subjective" ? rubrics : undefined,
+      childQuestions: formData.questionType === "nested" ? childQuestions : undefined
     };
     
     // Mock submission - in a real implementation this would be an API call
@@ -351,6 +615,25 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
     return formData.board && formData.class && formData.subject && formData.questionType && formData.difficulty && formData.marks;
   };
   
+  // Handle question type change
+  useEffect(() => {
+    if (formData.questionType === "true-false") {
+      setOptions([
+        { text: "True", isCorrect: true },
+        { text: "False", isCorrect: false }
+      ]);
+    } else if (formData.questionType === "single-correct" || formData.questionType === "multiple-correct") {
+      if (options.length < 2) {
+        setOptions([
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false }
+        ]);
+      }
+    }
+  }, [formData.questionType]);
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -359,6 +642,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
           <Select 
             value={formData.board} 
             onValueChange={(value) => handleInputChange("board", value)}
+            disabled={isView || isEdit}
             required
           >
             <SelectTrigger>
@@ -379,6 +663,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
           <Select 
             value={formData.class} 
             onValueChange={(value) => handleInputChange("class", value)}
+            disabled={isView || isEdit}
             required
           >
             <SelectTrigger>
@@ -399,6 +684,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
           <Select 
             value={formData.subject} 
             onValueChange={(value) => handleInputChange("subject", value)}
+            disabled={isView || isEdit}
             required
           >
             <SelectTrigger>
@@ -421,6 +707,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
             placeholder="Enter chapter name"
             value={formData.chapter}
             onChange={(e) => handleInputChange("chapter", e.target.value)}
+            disabled={isView || isEdit}
           />
         </div>
         
@@ -431,6 +718,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
             placeholder="Enter topic name"
             value={formData.topic}
             onChange={(e) => handleInputChange("topic", e.target.value)}
+            disabled={isView || isEdit}
           />
         </div>
         
@@ -439,6 +727,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
           <Select 
             value={formData.marks} 
             onValueChange={(value) => handleInputChange("marks", value)}
+            disabled={isView}
             required
           >
             <SelectTrigger>
@@ -459,6 +748,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
           <Select 
             value={formData.difficulty} 
             onValueChange={(value) => handleInputChange("difficulty", value)}
+            disabled={isView}
             required
           >
             <SelectTrigger>
@@ -479,6 +769,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
           <Select 
             value={formData.questionType} 
             onValueChange={(value) => handleInputChange("questionType", value)}
+            disabled={isView}
             required
           >
             <SelectTrigger>
@@ -495,72 +786,316 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
         </div>
       </div>
       
-      <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <Label htmlFor="question">Question *</Label>
-          <Button 
-            type="button" 
-            size="sm" 
-            disabled={isGenerating || !canGenerateWithAI()}
-            onClick={generateQuestion}
-          >
-            {isGenerating ? "Generating..." : "Generate with AI"}
-          </Button>
+      {formData.questionType !== "nested" ? (
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="question">Question *</Label>
+              <Button 
+                type="button" 
+                size="sm"
+                variant="outline"
+                onClick={() => handleImageUpload("questionImage")}
+                disabled={isView}
+              >
+                <Image className="h-4 w-4 mr-1" /> Add Image
+              </Button>
+            </div>
+            <Button 
+              type="button" 
+              size="sm" 
+              disabled={isGenerating || !canGenerateWithAI() || isView}
+              onClick={generateQuestion}
+            >
+              {isGenerating ? "Generating..." : "Generate with AI"}
+            </Button>
+          </div>
+          
+          {formData.questionImage && (
+            <div className="relative w-full h-60 rounded-md overflow-hidden mb-2">
+              <img 
+                src={formData.questionImage} 
+                alt="Question" 
+                className="w-full h-full object-cover" 
+              />
+              {!isView && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={() => handleInputChange("questionImage", "")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
+          
+          <Textarea
+            id="question"
+            placeholder="Enter question text here"
+            value={formData.question}
+            onChange={(e) => handleInputChange("question", e.target.value)}
+            rows={5}
+            disabled={isView}
+            required
+            className="mt-1"
+          />
         </div>
-        <Textarea
-          id="question"
-          placeholder="Enter question text here"
-          value={formData.question}
-          onChange={(e) => handleInputChange("question", e.target.value)}
-          rows={5}
-          required
-          className="mt-1"
-        />
-      </div>
+      ) : (
+        <div className="space-y-4 border p-4 rounded-md bg-gray-50">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="parentQuestion">Parent Question *</Label>
+              <Button 
+                type="button" 
+                size="sm"
+                variant="outline"
+                onClick={() => handleImageUpload("parentQuestionImage")}
+                disabled={isView}
+              >
+                <Image className="h-4 w-4 mr-1" /> Add Image
+              </Button>
+            </div>
+            <Button 
+              type="button" 
+              size="sm" 
+              disabled={isGenerating || !canGenerateWithAI() || isView}
+              onClick={generateQuestion}
+            >
+              {isGenerating ? "Generating..." : "Generate with AI"}
+            </Button>
+          </div>
+          
+          {formData.parentQuestionImage && (
+            <div className="relative w-full h-60 rounded-md overflow-hidden mb-2">
+              <img 
+                src={formData.parentQuestionImage} 
+                alt="Parent Question" 
+                className="w-full h-full object-cover" 
+              />
+              {!isView && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={() => handleInputChange("parentQuestionImage", "")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
+          
+          <Textarea
+            id="parentQuestion"
+            placeholder="Enter parent question text here (e.g., 'Answer the following questions:')"
+            value={formData.parentQuestion}
+            onChange={(e) => handleInputChange("parentQuestion", e.target.value)}
+            rows={3}
+            disabled={isView}
+            required
+            className="mt-1"
+          />
+          
+          <div className="flex justify-between items-center mt-4">
+            <h3 className="text-lg font-medium">Child Questions</h3>
+            {!isView && (
+              <Button type="button" size="sm" variant="outline" onClick={addChildQuestion}>
+                <Plus className="h-4 w-4 mr-1" /> Add Child Question
+              </Button>
+            )}
+          </div>
+          
+          {childQuestions.map((childQuestion, index) => (
+            <div key={index} className="border p-4 rounded-md bg-white">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-medium">Question {index + 1}</h4>
+                {!isView && childQuestions.length > 1 && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => removeChildQuestion(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`childQuestion-${index}`}>Question Text *</Label>
+                  {!isView && (
+                    <Button 
+                      type="button" 
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleChildQuestionImageUpload(index)}
+                    >
+                      <Image className="h-4 w-4 mr-1" /> Add Image
+                    </Button>
+                  )}
+                </div>
+                
+                {childQuestion.questionImage && (
+                  <div className="relative w-full h-40 rounded-md overflow-hidden mb-2">
+                    <img 
+                      src={childQuestion.questionImage} 
+                      alt={`Child Question ${index + 1}`} 
+                      className="w-full h-full object-cover" 
+                    />
+                    {!isView && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => handleChildQuestionChange(index, "questionImage", "")}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+                
+                <Textarea
+                  id={`childQuestion-${index}`}
+                  placeholder="Enter child question text here"
+                  value={childQuestion.question}
+                  onChange={(e) => handleChildQuestionChange(index, "question", e.target.value)}
+                  rows={3}
+                  disabled={isView}
+                  required
+                  className="mt-1"
+                />
+                
+                <div className="flex items-center gap-4">
+                  <div className="w-1/4">
+                    <Label htmlFor={`childMarks-${index}`}>Marks *</Label>
+                    <Input
+                      id={`childMarks-${index}`}
+                      type="number"
+                      min="1"
+                      placeholder="Marks"
+                      value={childQuestion.marks}
+                      onChange={(e) => handleChildQuestionChange(index, "marks", parseInt(e.target.value) || 0)}
+                      disabled={isView}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="flex-1">
+                    <Label htmlFor={`childAnswer-${index}`}>Model Answer</Label>
+                    <Textarea
+                      id={`childAnswer-${index}`}
+                      placeholder="Enter model answer (optional)"
+                      value={childQuestion.answer || ""}
+                      onChange={(e) => handleChildQuestionChange(index, "answer", e.target.value)}
+                      rows={2}
+                      disabled={isView}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       
       {(formData.questionType === "single-correct" || formData.questionType === "multiple-correct") && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <Label>Options *</Label>
-            <Button type="button" size="sm" variant="outline" onClick={addOption}>
-              <Plus className="h-4 w-4 mr-1" /> Add Option
-            </Button>
+            {!isView && (
+              <Button type="button" size="sm" variant="outline" onClick={addOption}>
+                <Plus className="h-4 w-4 mr-1" /> Add Option
+              </Button>
+            )}
           </div>
           
           {options.map((option, index) => (
-            <div key={index} className="flex items-center gap-3 border p-3 rounded-md">
-              {formData.questionType === "single-correct" ? (
-                <RadioGroup value={option.isCorrect ? index.toString() : ""} onValueChange={(value) => {
-                  const newOptions = options.map((opt, idx) => ({
-                    ...opt,
-                    isCorrect: idx.toString() === value
-                  }));
-                  setOptions(newOptions);
-                }}>
-                  <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                </RadioGroup>
-              ) : (
-                <Checkbox 
-                  checked={option.isCorrect}
-                  onCheckedChange={(checked) => handleOptionChange(index, "isCorrect", checked === true)}
-                  id={`option-${index}`}
+            <div key={index} className="space-y-2 border p-3 rounded-md">
+              <div className="flex items-center gap-3">
+                {formData.questionType === "single-correct" ? (
+                  <RadioGroup value={option.isCorrect ? index.toString() : ""} onValueChange={(value) => {
+                    if (!isView) {
+                      const newOptions = options.map((opt, idx) => ({
+                        ...opt,
+                        isCorrect: idx.toString() === value
+                      }));
+                      setOptions(newOptions);
+                    }
+                  }}>
+                    <RadioGroupItem value={index.toString()} id={`option-${index}`} disabled={isView} />
+                  </RadioGroup>
+                ) : (
+                  <Checkbox 
+                    checked={option.isCorrect}
+                    onCheckedChange={(checked) => {
+                      if (!isView) {
+                        handleOptionChange(index, "isCorrect", checked === true)
+                      }
+                    }}
+                    id={`option-${index}`}
+                    disabled={isView}
+                  />
+                )}
+                <Input
+                  placeholder={`Option ${index + 1}`}
+                  value={option.text}
+                  onChange={(e) => handleOptionChange(index, "text", e.target.value)}
+                  className="flex-1"
+                  disabled={isView}
                 />
-              )}
-              <Input
-                placeholder={`Option ${index + 1}`}
-                value={option.text}
-                onChange={(e) => handleOptionChange(index, "text", e.target.value)}
-                className="flex-1"
-              />
-              {options.length > 2 && (
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => removeOption(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                {!isView && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleOptionImageUpload(index)}
+                  >
+                    <Image className="h-4 w-4" />
+                  </Button>
+                )}
+                {!isView && options.length > 2 && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => removeOption(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              
+              {option.image && (
+                <div className="relative h-24 w-full rounded-md overflow-hidden">
+                  <img 
+                    src={option.image} 
+                    alt={`Option ${index + 1}`} 
+                    className="h-full w-full object-cover" 
+                  />
+                  {!isView && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => {
+                        const newOptions = [...options];
+                        newOptions[index] = { ...newOptions[index], image: undefined };
+                        setOptions(newOptions);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           ))}
@@ -573,18 +1108,21 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
           <RadioGroup 
             defaultValue={options.findIndex(opt => opt.isCorrect) === 0 ? "true" : "false"}
             onValueChange={(value) => {
-              setOptions([
-                { text: "True", isCorrect: value === "true" },
-                { text: "False", isCorrect: value === "false" }
-              ]);
+              if (!isView) {
+                setOptions([
+                  { text: "True", isCorrect: value === "true" },
+                  { text: "False", isCorrect: value === "false" }
+                ]);
+              }
             }}
+            disabled={isView}
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="true" id="true" />
+              <RadioGroupItem value="true" id="true" disabled={isView} />
               <Label htmlFor="true">True</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="false" id="false" />
+              <RadioGroupItem value="false" id="false" disabled={isView} />
               <Label htmlFor="false">False</Label>
             </div>
           </RadioGroup>
@@ -605,6 +1143,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
             onChange={(e) => handleInputChange("answer", e.target.value)}
             rows={formData.questionType === "fill-in-the-blank" ? 2 : 5}
             required={formData.questionType === "fill-in-the-blank"}
+            disabled={isView}
             className="mt-1"
           />
         </div>
@@ -614,9 +1153,11 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <Label>Evaluation Rubric *</Label>
-            <Button type="button" size="sm" variant="outline" onClick={addRubric}>
-              <Plus className="h-4 w-4 mr-1" /> Add Criteria
-            </Button>
+            {!isView && (
+              <Button type="button" size="sm" variant="outline" onClick={addRubric}>
+                <Plus className="h-4 w-4 mr-1" /> Add Criteria
+              </Button>
+            )}
           </div>
           
           <p className="text-sm text-muted-foreground">Total weight must sum to 100%</p>
@@ -628,6 +1169,7 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
                 value={rubric.criteria}
                 onChange={(e) => handleRubricChange(index, "criteria", e.target.value)}
                 className="flex-1"
+                disabled={isView}
               />
               <div className="flex items-center gap-2 min-w-[100px]">
                 <Input
@@ -637,10 +1179,11 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
                   value={rubric.weight}
                   onChange={(e) => handleRubricChange(index, "weight", parseInt(e.target.value) || 0)}
                   className="w-20"
+                  disabled={isView}
                 />
                 <span>%</span>
               </div>
-              {rubrics.length > 1 && (
+              {!isView && rubrics.length > 1 && (
                 <Button 
                   type="button" 
                   variant="ghost" 
@@ -659,18 +1202,31 @@ const QuestionForm = ({ type, initialData, isEdit = false }: QuestionFormProps) 
         </div>
       )}
       
-      <div className="flex justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate("/dashboard/question-bank")}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : isEdit ? "Update Question" : "Save Question"}
-        </Button>
-      </div>
+      {!isView && (
+        <div className="flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/dashboard/question-bank")}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : isEdit ? "Update Question" : "Save Question"}
+          </Button>
+        </div>
+      )}
+      
+      {isView && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={() => navigate("/dashboard/question-bank")}
+          >
+            Back to Question Bank
+          </Button>
+        </div>
+      )}
     </form>
   );
 };
