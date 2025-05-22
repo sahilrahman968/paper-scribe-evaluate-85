@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand, Check, X, Eye } from "lucide-react";
@@ -216,6 +215,9 @@ const CreateQuestionPaper = () => {
   const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([]);
   const [currentSubQuestion, setCurrentSubQuestion] = useState<SubQuestion | null>(null);
   const [isEditingSubQuestion, setIsEditingSubQuestion] = useState(false);
+  const [subQuestionType, setSubQuestionType] = useState<string>(QUESTION_TYPES[0]);
+  const [subQuestionOptions, setSubQuestionOptions] = useState<string[]>(["", "", "", ""]);
+  const [subQuestionCorrectOption, setSubQuestionCorrectOption] = useState<number>(0);
   
   // Filter topics based on selected chapter
   const availableTopics = selectedChapter ? TOPICS[selectedChapter as keyof typeof TOPICS] || [] : [];
@@ -408,6 +410,9 @@ const CreateQuestionPaper = () => {
       marks: 1,
     });
     setIsEditingSubQuestion(true);
+    setSubQuestionType(QUESTION_TYPES[0]);
+    setSubQuestionOptions(["", "", "", ""]);
+    setSubQuestionCorrectOption(0);
   };
   
   // Save current sub-question
@@ -419,14 +424,36 @@ const CreateQuestionPaper = () => {
       return;
     }
     
+    // Create a copy of the current sub-question to add type-specific properties
+    let finalSubQuestion: any = { ...currentSubQuestion };
+    
+    // Add type-specific data for sub-question
+    if (subQuestionType === "Multiple Choice") {
+      const validOptions = subQuestionOptions.filter(opt => opt.trim());
+      if (validOptions.length < 2) {
+        toast.error("Multiple choice questions need at least 2 non-empty options");
+        return;
+      }
+      finalSubQuestion.options = validOptions;
+      finalSubQuestion.correctOption = subQuestionCorrectOption;
+    }
+    
+    if (subQuestionType === "True/False") {
+      finalSubQuestion.options = ["True", "False"];
+      finalSubQuestion.correctOption = subQuestionCorrectOption;
+    }
+    
+    // Save the type with the sub-question
+    finalSubQuestion.type = subQuestionType;
+    
     if (isEditingSubQuestion) {
       // Edit existing sub-question
       setSubQuestions(subQuestions.map(sq => 
-        sq.id === currentSubQuestion.id ? currentSubQuestion : sq
+        sq.id === finalSubQuestion.id ? finalSubQuestion : sq
       ));
     } else {
       // Add new sub-question
-      setSubQuestions([...subQuestions, currentSubQuestion]);
+      setSubQuestions([...subQuestions, finalSubQuestion]);
     }
     
     setCurrentSubQuestion(null);
@@ -438,6 +465,19 @@ const CreateQuestionPaper = () => {
     const subQuestion = subQuestions.find(sq => sq.id === subQuestionId);
     if (subQuestion) {
       setCurrentSubQuestion(subQuestion);
+      setSubQuestionType(subQuestion.type || QUESTION_TYPES[0]);
+      
+      // Set options if it's a multiple choice question
+      if (subQuestion.type === "Multiple Choice" && subQuestion.options) {
+        // Ensure we have at least 4 options, filling with empty strings if needed
+        const options = [...subQuestion.options];
+        while (options.length < 4) options.push("");
+        setSubQuestionOptions(options);
+        setSubQuestionCorrectOption(subQuestion.correctOption || 0);
+      } else if (subQuestion.type === "True/False") {
+        setSubQuestionCorrectOption(subQuestion.correctOption || 0);
+      }
+      
       setIsEditingSubQuestion(true);
     }
   };
@@ -658,7 +698,10 @@ const CreateQuestionPaper = () => {
             
             {questionOptions.map((option, index) => (
               <div key={index} className="flex items-center gap-2">
-                <RadioGroup value={correctOptionIndex.toString()} onValueChange={(value) => setCorrectOptionIndex(parseInt(value))}>
+                <RadioGroup 
+                  value={correctOptionIndex.toString()} 
+                  onValueChange={(value) => setCorrectOptionIndex(parseInt(value))}
+                >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value={index.toString()} id={`option-${index}`} />
                   </div>
@@ -689,7 +732,10 @@ const CreateQuestionPaper = () => {
         return (
           <div className="space-y-4 mt-4 border rounded-md p-4">
             <h4 className="text-sm font-medium">Select the correct answer:</h4>
-            <RadioGroup value={correctOptionIndex.toString()} onValueChange={(value) => setCorrectOptionIndex(parseInt(value))}>
+            <RadioGroup 
+              value={correctOptionIndex.toString()} 
+              onValueChange={(value) => setCorrectOptionIndex(parseInt(value))}
+            >
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="0" id="true-option" />
@@ -780,7 +826,15 @@ const CreateQuestionPaper = () => {
                       <div key={sq.id} className="flex items-center justify-between p-2 border rounded-sm">
                         <div className="flex-1 mr-2">
                           <p className="text-sm font-medium">{index + 1}. {sq.question}</p>
-                          <p className="text-xs text-muted-foreground">{sq.marks} {sq.marks === 1 ? 'mark' : 'marks'}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground">{sq.marks} {sq.marks === 1 ? 'mark' : 'marks'}</p>
+                            {sq.type && <span className="text-xs px-2 py-1 bg-muted rounded-full">{sq.type}</span>}
+                            {sq.options && sq.options.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                ({sq.options.length} options)
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-1">
                           <Button 
@@ -821,27 +875,51 @@ const CreateQuestionPaper = () => {
                   />
                 </div>
                 
-                <div>
-                  <Label htmlFor="sub-question-marks">Marks</Label>
-                  <Select
-                    value={currentSubQuestion?.marks.toString() || "1"}
-                    onValueChange={(value) => setCurrentSubQuestion({
-                      ...currentSubQuestion!,
-                      marks: parseInt(value)
-                    })}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map((mark) => (
-                        <SelectItem key={mark} value={mark.toString()}>
-                          {mark}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sub-question-type">Question Type</Label>
+                    <Select
+                      value={subQuestionType}
+                      onValueChange={setSubQuestionType}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QUESTION_TYPES.filter(type => type !== "Composite").map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="sub-question-marks">Marks</Label>
+                    <Select
+                      value={currentSubQuestion?.marks.toString() || "1"}
+                      onValueChange={(value) => setCurrentSubQuestion({
+                        ...currentSubQuestion!,
+                        marks: parseInt(value)
+                      })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5].map((mark) => (
+                          <SelectItem key={mark} value={mark.toString()}>
+                            {mark}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                
+                {/* Render type-specific form for sub-questions */}
+                {renderSubQuestionTypeForm()}
                 
                 <div className="flex justify-end gap-2 mt-2">
                   <Button 
