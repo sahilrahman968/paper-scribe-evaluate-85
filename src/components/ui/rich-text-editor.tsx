@@ -7,8 +7,6 @@ import BlotFormatter from "quill-blot-formatter";
 import ImageUploader from "quill-image-uploader";
 import { cn } from "@/lib/utils";
 import katex from "katex";
-
-// Import Quill directly rather than using require
 import Quill from "quill";
 
 let Parchment = null;
@@ -37,6 +35,8 @@ if (typeof window !== "undefined") {
       return node.getAttribute("data-formula");
     }
   }
+  
+  // Define static properties on the class after declaration
   FormulaBlot.blotName = "formula";
   FormulaBlot.tagName = "DIV";
   FormulaBlot.className = "ql-formula";
