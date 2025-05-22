@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand } from "lucide-react";
+import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,8 +46,17 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+
+interface SubQuestion {
+  id: string;
+  question: string;
+  options?: string[];
+  correctOption?: number;
+  marks: number;
+}
 
 interface Section {
   id: string;
@@ -61,6 +69,10 @@ interface Section {
     type?: string;
     chapter?: string;
     topic?: string;
+    subQuestions?: SubQuestion[];
+    options?: string[];
+    correctOption?: number;
+    matches?: {left: string, right: string}[];
   }[];
 }
 
@@ -72,6 +84,7 @@ const QUESTION_TYPES = [
   "True/False",
   "Fill in the blanks",
   "Match the following",
+  "Composite"
 ];
 
 const CHAPTERS = [
@@ -187,6 +200,21 @@ const CreateQuestionPaper = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<string[]>([]);
   
+  // New state for question options
+  const [questionOptions, setQuestionOptions] = useState<string[]>(["", "", "", ""]);
+  const [correctOptionIndex, setCorrectOptionIndex] = useState<number>(0);
+  const [matchingItems, setMatchingItems] = useState<{left: string, right: string}[]>([
+    {left: "", right: ""},
+    {left: "", right: ""},
+    {left: "", right: ""},
+    {left: "", right: ""}
+  ]);
+  
+  // State for sub-questions in composite questions
+  const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([]);
+  const [currentSubQuestion, setCurrentSubQuestion] = useState<SubQuestion | null>(null);
+  const [isEditingSubQuestion, setIsEditingSubQuestion] = useState(false);
+  
   // Filter topics based on selected chapter
   const availableTopics = selectedChapter ? TOPICS[selectedChapter as keyof typeof TOPICS] || [] : [];
   
@@ -230,6 +258,17 @@ const CreateQuestionPaper = () => {
     setQuestionAddMethod("manual");
     setAiPrompt("");
     setSelectedBankQuestions([]);
+    setQuestionOptions(["", "", "", ""]);
+    setCorrectOptionIndex(0);
+    setMatchingItems([
+      {left: '', right: ''},
+      {left: '', right: ''},
+      {left: '', right: ''},
+      {left: '', right: ''}
+    ]);
+    setSubQuestions([]);
+    setCurrentSubQuestion(null);
+    setIsEditingSubQuestion(false);
   };
   
   const updateQuestion = (sectionId: string, questionId: string, field: string, value: any) => {
@@ -309,6 +348,108 @@ const CreateQuestionPaper = () => {
     }, 1000);
   };
   
+  // Handle updating question options
+  const updateQuestionOption = (index: number, value: string) => {
+    const newOptions = [...questionOptions];
+    newOptions[index] = value;
+    setQuestionOptions(newOptions);
+  };
+  
+  // Handle updating matching items
+  const updateMatchingItem = (index: number, side: 'left' | 'right', value: string) => {
+    const newItems = [...matchingItems];
+    newItems[index] = { ...newItems[index], [side]: value };
+    setMatchingItems(newItems);
+  };
+  
+  // Add another matching item
+  const addMatchingItem = () => {
+    setMatchingItems([...matchingItems, { left: '', right: '' }]);
+  };
+  
+  // Remove a matching item
+  const removeMatchingItem = (index: number) => {
+    if (matchingItems.length <= 2) {
+      toast.error("Matching questions require at least 2 pairs");
+      return;
+    }
+    setMatchingItems(matchingItems.filter((_, i) => i !== index));
+  };
+  
+  // Add another option
+  const addOption = () => {
+    setQuestionOptions([...questionOptions, '']);
+  };
+  
+  // Remove an option
+  const removeOption = (index: number) => {
+    if (questionOptions.length <= 2) {
+      toast.error("Multiple choice questions require at least 2 options");
+      return;
+    }
+    const newOptions = questionOptions.filter((_, i) => i !== index);
+    setQuestionOptions(newOptions);
+    
+    // Adjust correctOptionIndex if needed
+    if (index === correctOptionIndex) {
+      setCorrectOptionIndex(0);
+    } else if (index < correctOptionIndex) {
+      setCorrectOptionIndex(correctOptionIndex - 1);
+    }
+  };
+  
+  // Handle adding sub-question
+  const addSubQuestion = () => {
+    setCurrentSubQuestion({
+      id: `sub-${Date.now()}`,
+      question: '',
+      marks: 1,
+    });
+    setIsEditingSubQuestion(true);
+  };
+  
+  // Save current sub-question
+  const saveSubQuestion = () => {
+    if (!currentSubQuestion) return;
+    
+    if (!currentSubQuestion.question.trim()) {
+      toast.error("Sub-question text cannot be empty");
+      return;
+    }
+    
+    if (isEditingSubQuestion) {
+      // Edit existing sub-question
+      setSubQuestions(subQuestions.map(sq => 
+        sq.id === currentSubQuestion.id ? currentSubQuestion : sq
+      ));
+    } else {
+      // Add new sub-question
+      setSubQuestions([...subQuestions, currentSubQuestion]);
+    }
+    
+    setCurrentSubQuestion(null);
+    setIsEditingSubQuestion(false);
+  };
+  
+  // Edit a sub-question
+  const editSubQuestion = (subQuestionId: string) => {
+    const subQuestion = subQuestions.find(sq => sq.id === subQuestionId);
+    if (subQuestion) {
+      setCurrentSubQuestion(subQuestion);
+      setIsEditingSubQuestion(true);
+    }
+  };
+  
+  // Delete a sub-question
+  const deleteSubQuestion = (subQuestionId: string) => {
+    setSubQuestions(subQuestions.filter(sq => sq.id !== subQuestionId));
+  };
+  
+  // Calculate total marks from sub-questions
+  const calculateSubQuestionMarks = () => {
+    return subQuestions.reduce((total, sq) => total + sq.marks, 0);
+  };
+  
   // Handle adding question based on selected method
   const handleAddQuestion = () => {
     if (!currentSectionId) return;
@@ -320,7 +461,58 @@ const CreateQuestionPaper = () => {
         return;
       }
       
-      // Add manually entered question
+      // Validate question type specific requirements
+      if (selectedQuestionType === "Multiple Choice") {
+        if (questionOptions.filter(opt => opt.trim()).length < 2) {
+          toast.error("Multiple choice questions need at least 2 non-empty options");
+          return;
+        }
+      }
+      
+      if (selectedQuestionType === "Match the following") {
+        if (matchingItems.filter(item => item.left.trim() && item.right.trim()).length < 2) {
+          toast.error("Matching questions need at least 2 complete pairs");
+          return;
+        }
+      }
+      
+      if (selectedQuestionType === "Composite") {
+        if (subQuestions.length === 0) {
+          toast.error("Composite questions need at least one sub-question");
+          return;
+        }
+      }
+      
+      // Create question object based on type
+      let questionData: any = {
+        id: `q-${Date.now()}`,
+        question: newQuestionText,
+        marks: selectedQuestionType === "Composite" ? calculateSubQuestionMarks() : newQuestionMarks,
+        type: selectedQuestionType,
+        chapter: selectedChapter || undefined,
+        topic: selectedTopic || undefined,
+      };
+      
+      // Add type-specific data
+      if (selectedQuestionType === "Multiple Choice") {
+        questionData.options = questionOptions.filter(opt => opt.trim());
+        questionData.correctOption = correctOptionIndex;
+      }
+      
+      if (selectedQuestionType === "Match the following") {
+        questionData.matches = matchingItems.filter(item => item.left.trim() && item.right.trim());
+      }
+      
+      if (selectedQuestionType === "True/False") {
+        questionData.options = ["True", "False"];
+        questionData.correctOption = correctOptionIndex;
+      }
+      
+      if (selectedQuestionType === "Composite") {
+        questionData.subQuestions = [...subQuestions];
+      }
+      
+      // Add question to section
       setSections(
         sections.map((section) =>
           section.id === currentSectionId
@@ -328,14 +520,7 @@ const CreateQuestionPaper = () => {
                 ...section,
                 questions: [
                   ...section.questions,
-                  {
-                    id: `q-${Date.now()}`,
-                    question: newQuestionText,
-                    marks: newQuestionMarks,
-                    type: selectedQuestionType,
-                    chapter: selectedChapter || undefined,
-                    topic: selectedTopic || undefined,
-                  },
+                  questionData,
                 ],
               }
             : section
@@ -449,6 +634,241 @@ const CreateQuestionPaper = () => {
   // Calculate section marks
   const calculateSectionMarks = (questions: { marks: number }[]) => {
     return questions.reduce((total, q) => total + q.marks, 0);
+  };
+  
+  // Render dynamic question form based on type
+  const renderQuestionTypeForm = () => {
+    switch (selectedQuestionType) {
+      case "Multiple Choice":
+        return (
+          <div className="space-y-4 mt-4 border rounded-md p-4">
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm font-medium">Multiple Choice Options</h4>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={addOption}
+              >
+                Add Option
+              </Button>
+            </div>
+            
+            {questionOptions.map((option, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <RadioGroup value={correctOptionIndex.toString()} onValueChange={(value) => setCorrectOptionIndex(parseInt(value))}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                  </div>
+                </RadioGroup>
+                <Input
+                  value={option}
+                  onChange={(e) => updateQuestionOption(index, e.target.value)}
+                  placeholder={`Option ${index + 1}`}
+                  className="flex-1"
+                />
+                {questionOptions.length > 2 && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => removeOption(index)}
+                  >
+                    <Trash className="h-4 w-4 text-red-500" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">Select the radio button next to the correct answer.</p>
+          </div>
+        );
+        
+      case "True/False":
+        return (
+          <div className="space-y-4 mt-4 border rounded-md p-4">
+            <h4 className="text-sm font-medium">Select the correct answer:</h4>
+            <RadioGroup value={correctOptionIndex.toString()} onValueChange={(value) => setCorrectOptionIndex(parseInt(value))}>
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="0" id="true-option" />
+                  <Label htmlFor="true-option">True</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="1" id="false-option" />
+                  <Label htmlFor="false-option">False</Label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+        );
+        
+      case "Match the following":
+        return (
+          <div className="space-y-4 mt-4 border rounded-md p-4">
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm font-medium">Matching Pairs</h4>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={addMatchingItem}
+              >
+                Add Pair
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+              <div className="font-medium text-sm">Column A</div>
+              <div className="font-medium text-sm">Column B</div>
+              <div></div>
+              
+              {matchingItems.map((item, index) => (
+                <React.Fragment key={index}>
+                  <Input
+                    value={item.left}
+                    onChange={(e) => updateMatchingItem(index, 'left', e.target.value)}
+                    placeholder={`Item ${index + 1}`}
+                  />
+                  <Input
+                    value={item.right}
+                    onChange={(e) => updateMatchingItem(index, 'right', e.target.value)}
+                    placeholder={`Match ${index + 1}`}
+                  />
+                  {matchingItems.length > 2 && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => removeMatchingItem(index)}
+                    >
+                      <Trash className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        );
+        
+      case "Composite":
+        return (
+          <div className="space-y-4 mt-4 border rounded-md p-4">
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm font-medium">
+                Sub-questions (Total: {calculateSubQuestionMarks()} marks)
+              </h4>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={addSubQuestion}
+                disabled={isEditingSubQuestion}
+              >
+                Add Sub-question
+              </Button>
+            </div>
+            
+            {!isEditingSubQuestion ? (
+              <div className="space-y-2">
+                {subQuestions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No sub-questions added yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {subQuestions.map((sq, index) => (
+                      <div key={sq.id} className="flex items-center justify-between p-2 border rounded-sm">
+                        <div className="flex-1 mr-2">
+                          <p className="text-sm font-medium">{index + 1}. {sq.question}</p>
+                          <p className="text-xs text-muted-foreground">{sq.marks} {sq.marks === 1 ? 'mark' : 'marks'}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => editSubQuestion(sq.id)}
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => deleteSubQuestion(sq.id)}
+                          >
+                            <Trash className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3 border p-3 rounded-md">
+                <div>
+                  <Label htmlFor="sub-question-text">Sub-question Text</Label>
+                  <Textarea
+                    id="sub-question-text"
+                    value={currentSubQuestion?.question || ''}
+                    onChange={(e) => setCurrentSubQuestion({
+                      ...currentSubQuestion!,
+                      question: e.target.value
+                    })}
+                    placeholder="Enter sub-question text"
+                    rows={2}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="sub-question-marks">Marks</Label>
+                  <Select
+                    value={currentSubQuestion?.marks.toString() || "1"}
+                    onValueChange={(value) => setCurrentSubQuestion({
+                      ...currentSubQuestion!,
+                      marks: parseInt(value)
+                    })}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map((mark) => (
+                        <SelectItem key={mark} value={mark.toString()}>
+                          {mark}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex justify-end gap-2 mt-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setCurrentSubQuestion(null);
+                      setIsEditingSubQuestion(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="button" 
+                    size="sm"
+                    onClick={saveSubQuestion}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+        
+      default:
+        return null;
+    }
   };
   
   // Preview tab content
@@ -822,7 +1242,7 @@ const CreateQuestionPaper = () => {
                             Add Question
                           </Button>
                         </SheetTrigger>
-                        <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+                        <SheetContent side="wide" className="overflow-y-auto">
                           <SheetHeader>
                             <SheetTitle>Add Question to {section.title}</SheetTitle>
                             <SheetDescription>
@@ -876,25 +1296,29 @@ const CreateQuestionPaper = () => {
                                     </Select>
                                   </div>
                                   
-                                  <div>
-                                    <Label htmlFor="new-question-marks">Marks</Label>
-                                    <Select
-                                      value={newQuestionMarks.toString()}
-                                      onValueChange={(value) => setNewQuestionMarks(parseInt(value))}
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {[1, 2, 3, 4, 5, 8, 10].map((mark) => (
-                                          <SelectItem key={mark} value={mark.toString()}>
-                                            {mark}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
+                                  {selectedQuestionType !== "Composite" && (
+                                    <div>
+                                      <Label htmlFor="new-question-marks">Marks</Label>
+                                      <Select
+                                        value={newQuestionMarks.toString()}
+                                        onValueChange={(value) => setNewQuestionMarks(parseInt(value))}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {[1, 2, 3, 4, 5, 8, 10].map((mark) => (
+                                            <SelectItem key={mark} value={mark.toString()}>
+                                              {mark}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
                                 </div>
+                                
+                                {renderQuestionTypeForm()}
                                 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                   <div>
