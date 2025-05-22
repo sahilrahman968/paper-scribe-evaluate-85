@@ -33,6 +33,7 @@ interface Question {
 
 const CreateQuestion = () => {
   const params = useParams();
+  const navigate = useNavigate();
   const id = params.id;
   const mode = params.mode;
   

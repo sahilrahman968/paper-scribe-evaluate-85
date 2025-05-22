@@ -57,7 +57,7 @@ const toolbarOptions = [
   ['clean']
 ];
 
-// Mock image upload handler
+// Mock image upload handler - moved inside component
 const imageHandler = () => {
   const input = document.createElement('input');
   input.setAttribute('type', 'file');
