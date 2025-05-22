@@ -1,4 +1,6 @@
+
 import * as React from "react"
+import { Move } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -26,8 +28,8 @@ TableHeader.displayName = "TableHeader"
 
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableSectionElement> & { draggable?: boolean }
+>(({ className, draggable, ...props }, ref) => (
   <tbody
     ref={ref}
     className={cn("[&_tr:last-child]:border-0", className)}
@@ -53,14 +55,25 @@ TableFooter.displayName = "TableFooter"
 
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableRowElement> & { 
+    isDraggable?: boolean;
+    onDragStart?: React.DragEventHandler<HTMLTableRowElement>;
+    onDragOver?: React.DragEventHandler<HTMLTableRowElement>;
+    onDrop?: React.DragEventHandler<HTMLTableRowElement>;
+    draggable?: boolean;
+  }
+>(({ className, isDraggable = false, onDragStart, onDragOver, onDrop, draggable, ...props }, ref) => (
   <tr
     ref={ref}
     className={cn(
       "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      isDraggable && "cursor-move",
       className
     )}
+    draggable={isDraggable || draggable}
+    onDragStart={onDragStart}
+    onDragOver={onDragOver}
+    onDrop={onDrop}
     {...props}
   />
 ))
@@ -105,6 +118,20 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
+const DragHandle = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("cursor-move p-2 text-gray-500 hover:text-gray-700", className)}
+    {...props}
+  >
+    <Move size={16} />
+  </div>
+))
+DragHandle.displayName = "DragHandle"
+
 export {
   Table,
   TableHeader,
@@ -114,4 +141,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  DragHandle,
 }
