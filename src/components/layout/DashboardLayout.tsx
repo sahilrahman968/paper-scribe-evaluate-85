@@ -30,6 +30,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     if (storedSidebarState !== null) {
       setSidebarOpen(storedSidebarState === "open");
     }
+    // On mobile, default to closed
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
   }, []);
 
   const menuItems = [
@@ -58,15 +62,27 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     if (href === "/dashboard") {
       return location.pathname === "/dashboard";
     }
-    // For other routes, check if path starts with the href (but not the root dashboard)
-    return location.pathname.startsWith(href);
+    // For other routes, match only the direct parent path
+    if (href !== "/dashboard") {
+      const currentPath = location.pathname;
+      const pathParts = currentPath.split('/').filter(Boolean);
+      const hrefParts = href.split('/').filter(Boolean);
+      
+      if (pathParts.length >= hrefParts.length) {
+        for (let i = 0; i < hrefParts.length; i++) {
+          if (pathParts[i] !== hrefParts[i]) return false;
+        }
+        return true;
+      }
+    }
+    return false;
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Mobile sidebar */}
+    <div className="min-h-screen bg-background">
+      {/* Mobile sidebar overlay */}
       <div 
-        className={`fixed inset-0 z-50 bg-gray-600 bg-opacity-75 transition-opacity lg:hidden ${
+        className={`fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity lg:hidden ${
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`} 
         onClick={() => setSidebarOpen(false)}
@@ -74,33 +90,36 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       {/* Mobile sidebar panel */}
       <div 
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform transition-transform lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar transform transition-transform ease-in-out duration-300 lg:hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-          <Link to="/dashboard" className="font-bold text-xl text-indigo-600">
+        <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
+          <Link to="/dashboard" className="font-bold text-xl text-primary">
             EduAssess
           </Link>
-          <button onClick={() => setSidebarOpen(false)}>
-            <X className="h-6 w-6 text-gray-500" />
+          <button 
+            onClick={() => setSidebarOpen(false)}
+            className="p-1 rounded-full hover:bg-sidebar-accent"
+          >
+            <X className="h-5 w-5 text-sidebar-foreground" />
           </button>
         </div>
-        <nav className="flex flex-col h-full py-4 overflow-y-auto">
-          <div className="px-4 space-y-1">
+        <nav className="flex flex-col h-[calc(100vh-4rem)] py-4 overflow-y-auto">
+          <div className="px-3 space-y-1">
             {menuItems.map((item) => {
               const isActive = isActiveRoute(item.href);
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                  className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md ${
                     isActive
-                      ? "bg-indigo-50 text-indigo-600"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   }`}
                 >
-                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? "text-indigo-500" : "text-gray-400"}`} />
+                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? "text-primary-foreground" : "text-sidebar-foreground"}`} />
                   {item.name}
                 </Link>
               );
@@ -119,45 +138,45 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 transition-all duration-300 ${
         sidebarOpen ? "lg:w-64" : "lg:w-20"
       }`}>
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-between h-16 border-b border-gray-200 px-4">
+        <div className="flex flex-col flex-grow bg-sidebar border-r border-sidebar-border overflow-hidden">
+          <div className="flex items-center justify-between h-16 border-b border-sidebar-border px-4">
             {sidebarOpen ? (
-              <Link to="/dashboard" className="font-bold text-xl text-indigo-600">
+              <Link to="/dashboard" className="font-bold text-xl text-primary">
                 EduAssess
               </Link>
             ) : (
-              <span className="font-bold text-xl text-indigo-600 mx-auto">EA</span>
+              <span className="font-bold text-xl text-primary mx-auto">EA</span>
             )}
             <Button 
               variant="ghost" 
               size="icon" 
-              className={`${sidebarOpen ? '' : 'mx-auto'}`}
+              className={`${sidebarOpen ? '' : 'mx-auto'} hover:bg-sidebar-accent`}
               onClick={toggleSidebar}
             >
-              <Menu className="h-5 w-5 text-gray-500" />
+              <Menu className="h-5 w-5 text-sidebar-foreground" />
             </Button>
           </div>
           <nav className="flex flex-col flex-1 py-4 overflow-y-auto">
-            <div className="px-4 space-y-1">
+            <div className="px-3 space-y-1">
               {menuItems.map((item) => {
                 const isActive = isActiveRoute(item.href);
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                    className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md ${
                       isActive
-                        ? "bg-indigo-50 text-indigo-600"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     }`}
                   >
-                    <item.icon className={`${sidebarOpen ? 'mr-3' : 'mx-auto'} h-5 w-5 ${isActive ? "text-indigo-500" : "text-gray-400"}`} />
+                    <item.icon className={`${sidebarOpen ? 'mr-3' : 'mx-auto'} h-5 w-5 ${isActive ? "text-primary-foreground" : "text-sidebar-foreground"}`} />
                     {sidebarOpen && <span>{item.name}</span>}
                   </Link>
                 );
               })}
             </div>
-            <div className="mt-auto px-4">
+            <div className="mt-auto px-3">
               <Button 
                 variant="outline" 
                 className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-0'}`} 
@@ -174,34 +193,33 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Main content - adjust the left padding based on sidebar state */}
       <div className={`transition-all duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-20"} flex flex-col`}>
         {/* Top navigation */}
-        <div className="sticky top-0 z-10 flex-shrink-0 h-16 bg-white border-b border-gray-200">
+        <div className="sticky top-0 z-10 flex-shrink-0 h-16 bg-card border-b border-border shadow-sm">
           <div className="flex items-center justify-between h-full px-4 md:px-6">
             <div className="flex items-center">
               <button 
-                className="lg:hidden -mr-2 p-2 text-gray-400 hover:text-gray-500"
+                className="lg:hidden p-2 rounded-md text-foreground hover:bg-accent"
                 onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
               >
-                <Menu className="h-6 w-6" />
+                <Menu className="h-5 w-5" />
               </button>
               <h1 className="ml-2 lg:ml-0 text-lg md:text-xl font-medium">
                 {menuItems.find(item => isActiveRoute(item.href))?.name || "Dashboard"}
               </h1>
             </div>
             <div className="flex items-center">
-              <div className="ml-4 relative">
-                <Button 
-                  variant="ghost"
-                  className="flex items-center"
-                  onClick={() => navigate("/dashboard/profile")}
-                >
-                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <span className="hidden md:block ml-2 text-sm font-medium">
-                    Teacher Name
-                  </span>
-                </Button>
-              </div>
+              <Button 
+                variant="ghost"
+                className="flex items-center hover:bg-accent rounded-full"
+                onClick={() => navigate("/dashboard/profile")}
+              >
+                <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground">
+                  <User className="h-5 w-5" />
+                </div>
+                <span className="hidden md:block ml-2 text-sm font-medium">
+                  Teacher Name
+                </span>
+              </Button>
             </div>
           </div>
         </div>
