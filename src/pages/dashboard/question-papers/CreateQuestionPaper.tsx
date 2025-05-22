@@ -56,7 +56,9 @@ interface SubQuestion {
   options?: string[];
   correctOption?: number;
   marks: number;
-  type?: string; // Add type property to fix TS errors
+  type?: string;
+  chapter?: string;
+  topic?: string;
 }
 
 interface Section {
@@ -85,7 +87,7 @@ const QUESTION_TYPES = [
   "True/False",
   "Fill in the blanks",
   "Match the following",
-  "Composite"
+  "Nested"
 ];
 
 const CHAPTERS = [
@@ -212,16 +214,21 @@ const CreateQuestionPaper = () => {
     {left: '', right: ''}
   ]);
   
-  // State for sub-questions in composite questions
+  // State for child questions in nested questions
   const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([]);
   const [currentSubQuestion, setCurrentSubQuestion] = useState<SubQuestion | null>(null);
   const [isEditingSubQuestion, setIsEditingSubQuestion] = useState(false);
   const [subQuestionType, setSubQuestionType] = useState<string>(QUESTION_TYPES[0]);
   const [subQuestionOptions, setSubQuestionOptions] = useState<string[]>(["", "", "", ""]);
   const [subQuestionCorrectOption, setSubQuestionCorrectOption] = useState<number>(0);
+  const [subQuestionChapter, setSubQuestionChapter] = useState<string | null>(null);
+  const [subQuestionTopic, setSubQuestionTopic] = useState<string | null>(null);
   
   // Filter topics based on selected chapter
   const availableTopics = selectedChapter ? TOPICS[selectedChapter as keyof typeof TOPICS] || [] : [];
+  
+  // Filter topics for child question based on selected chapter
+  const availableSubQuestionTopics = subQuestionChapter ? TOPICS[subQuestionChapter as keyof typeof TOPICS] || [] : [];
   
   const addSection = () => {
     const newSectionId = `section-${sections.length + 1}`;
@@ -274,6 +281,8 @@ const CreateQuestionPaper = () => {
     setSubQuestions([]);
     setCurrentSubQuestion(null);
     setIsEditingSubQuestion(false);
+    setSubQuestionChapter(null);
+    setSubQuestionTopic(null);
   };
   
   const updateQuestion = (sectionId: string, questionId: string, field: string, value: any) => {
@@ -403,7 +412,7 @@ const CreateQuestionPaper = () => {
     }
   };
   
-  // Handle adding sub-question
+  // Handle adding child question
   const addSubQuestion = () => {
     setCurrentSubQuestion({
       id: `sub-${Date.now()}`,
@@ -414,21 +423,27 @@ const CreateQuestionPaper = () => {
     setSubQuestionType(QUESTION_TYPES[0]);
     setSubQuestionOptions(["", "", "", ""]);
     setSubQuestionCorrectOption(0);
+    setSubQuestionChapter(null);
+    setSubQuestionTopic(null);
   };
   
-  // Save current sub-question
+  // Save current child question
   const saveSubQuestion = () => {
     if (!currentSubQuestion) return;
     
     if (!currentSubQuestion.question.trim()) {
-      toast.error("Sub-question text cannot be empty");
+      toast.error("Child question text cannot be empty");
       return;
     }
     
-    // Create a copy of the current sub-question to add type-specific properties
-    let finalSubQuestion: any = { ...currentSubQuestion };
+    // Create a copy of the current child question to add type-specific properties
+    let finalSubQuestion: any = { 
+      ...currentSubQuestion,
+      chapter: subQuestionChapter || undefined,
+      topic: subQuestionTopic || undefined
+    };
     
-    // Add type-specific data for sub-question
+    // Add type-specific data for child question
     if (subQuestionType === "Multiple Choice") {
       const validOptions = subQuestionOptions.filter(opt => opt.trim());
       if (validOptions.length < 2) {
@@ -444,16 +459,16 @@ const CreateQuestionPaper = () => {
       finalSubQuestion.correctOption = subQuestionCorrectOption;
     }
     
-    // Save the type with the sub-question
+    // Save the type with the child question
     finalSubQuestion.type = subQuestionType;
     
     if (isEditingSubQuestion) {
-      // Edit existing sub-question
+      // Edit existing child question
       setSubQuestions(subQuestions.map(sq => 
         sq.id === finalSubQuestion.id ? finalSubQuestion : sq
       ));
     } else {
-      // Add new sub-question
+      // Add new child question
       setSubQuestions([...subQuestions, finalSubQuestion]);
     }
     
@@ -461,12 +476,14 @@ const CreateQuestionPaper = () => {
     setIsEditingSubQuestion(false);
   };
   
-  // Edit a sub-question
+  // Edit a child question
   const editSubQuestion = (subQuestionId: string) => {
     const subQuestion = subQuestions.find(sq => sq.id === subQuestionId);
     if (subQuestion) {
       setCurrentSubQuestion(subQuestion);
       setSubQuestionType(subQuestion.type || QUESTION_TYPES[0]);
+      setSubQuestionChapter(subQuestion.chapter || null);
+      setSubQuestionTopic(subQuestion.topic || null);
       
       // Set options if it's a multiple choice question
       if (subQuestion.type === "Multiple Choice" && subQuestion.options) {
@@ -483,17 +500,17 @@ const CreateQuestionPaper = () => {
     }
   };
   
-  // Delete a sub-question
+  // Delete a child question
   const deleteSubQuestion = (subQuestionId: string) => {
     setSubQuestions(subQuestions.filter(sq => sq.id !== subQuestionId));
   };
   
-  // Calculate total marks from sub-questions
+  // Calculate total marks from child questions
   const calculateSubQuestionMarks = () => {
     return subQuestions.reduce((total, sq) => total + sq.marks, 0);
   };
   
-  // Render type-specific form for sub-questions
+  // Render type-specific form for child questions
   const renderSubQuestionTypeForm = () => {
     switch (subQuestionType) {
       case "Multiple Choice":
@@ -610,9 +627,9 @@ const CreateQuestionPaper = () => {
         }
       }
       
-      if (selectedQuestionType === "Composite") {
+      if (selectedQuestionType === "Nested") {
         if (subQuestions.length === 0) {
-          toast.error("Composite questions need at least one sub-question");
+          toast.error("Nested questions need at least one child question");
           return;
         }
       }
@@ -621,11 +638,15 @@ const CreateQuestionPaper = () => {
       let questionData: any = {
         id: `q-${Date.now()}`,
         question: newQuestionText,
-        marks: selectedQuestionType === "Composite" ? calculateSubQuestionMarks() : newQuestionMarks,
+        marks: selectedQuestionType === "Nested" ? calculateSubQuestionMarks() : newQuestionMarks,
         type: selectedQuestionType,
-        chapter: selectedChapter || undefined,
-        topic: selectedTopic || undefined,
       };
+      
+      // Add chapter and topic only if not nested type
+      if (selectedQuestionType !== "Nested") {
+        questionData.chapter = selectedChapter || undefined;
+        questionData.topic = selectedTopic || undefined;
+      }
       
       // Add type-specific data
       if (selectedQuestionType === "Multiple Choice") {
@@ -642,7 +663,7 @@ const CreateQuestionPaper = () => {
         questionData.correctOption = correctOptionIndex;
       }
       
-      if (selectedQuestionType === "Composite") {
+      if (selectedQuestionType === "Nested") {
         questionData.subQuestions = [...subQuestions];
       }
       
@@ -890,12 +911,12 @@ const CreateQuestionPaper = () => {
           </div>
         );
         
-      case "Composite":
+      case "Nested":
         return (
           <div className="space-y-4 mt-4 border rounded-md p-4">
             <div className="flex justify-between items-center">
               <h4 className="text-sm font-medium">
-                Sub-questions (Total: {calculateSubQuestionMarks()} marks)
+                Child questions (Total: {calculateSubQuestionMarks()} marks)
               </h4>
               <Button 
                 type="button" 
@@ -904,14 +925,14 @@ const CreateQuestionPaper = () => {
                 onClick={addSubQuestion}
                 disabled={isEditingSubQuestion}
               >
-                Add Sub-question
+                Add Child question
               </Button>
             </div>
             
             {!isEditingSubQuestion ? (
               <div className="space-y-2">
                 {subQuestions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No sub-questions added yet.</p>
+                  <p className="text-sm text-muted-foreground">No child questions added yet.</p>
                 ) : (
                   <div className="space-y-2">
                     {subQuestions.map((sq, index) => (
@@ -921,6 +942,7 @@ const CreateQuestionPaper = () => {
                           <div className="flex items-center gap-2">
                             <p className="text-xs text-muted-foreground">{sq.marks} {sq.marks === 1 ? 'mark' : 'marks'}</p>
                             {sq.type && <span className="text-xs px-2 py-1 bg-muted rounded-full">{sq.type}</span>}
+                            {sq.chapter && <span className="text-xs px-2 py-1 bg-muted/50 rounded-full">{sq.chapter.split(':')[0]}</span>}
                             {sq.options && sq.options.length > 0 && (
                               <p className="text-xs text-muted-foreground">
                                 ({sq.options.length} options)
@@ -954,7 +976,7 @@ const CreateQuestionPaper = () => {
             ) : (
               <div className="space-y-3 border p-3 rounded-md">
                 <div>
-                  <Label htmlFor="sub-question-text">Sub-question Text</Label>
+                  <Label htmlFor="sub-question-text">Child question Text</Label>
                   <Textarea
                     id="sub-question-text"
                     value={currentSubQuestion?.question || ''}
@@ -962,7 +984,7 @@ const CreateQuestionPaper = () => {
                       ...currentSubQuestion!,
                       question: e.target.value
                     })}
-                    placeholder="Enter sub-question text"
+                    placeholder="Enter child question text"
                     rows={2}
                   />
                 </div>
@@ -978,7 +1000,7 @@ const CreateQuestionPaper = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {QUESTION_TYPES.filter(type => type !== "Composite").map((type) => (
+                        {QUESTION_TYPES.filter(type => type !== "Nested").map((type) => (
                           <SelectItem key={type} value={type}>
                             {type}
                           </SelectItem>
@@ -1010,7 +1032,51 @@ const CreateQuestionPaper = () => {
                   </div>
                 </div>
                 
-                {/* Render type-specific form for sub-questions */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sub-question-chapter">Chapter</Label>
+                    <Select
+                      value={subQuestionChapter || ""}
+                      onValueChange={(value) => {
+                        setSubQuestionChapter(value);
+                        setSubQuestionTopic(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select chapter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CHAPTERS.map((chapter) => (
+                          <SelectItem key={chapter} value={chapter}>
+                            {chapter}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="sub-question-topic">Topic</Label>
+                    <Select
+                      value={subQuestionTopic || ""}
+                      onValueChange={setSubQuestionTopic}
+                      disabled={!subQuestionChapter}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={!subQuestionChapter ? "Select chapter first" : "Select topic"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSubQuestionTopics.map((topic) => (
+                          <SelectItem key={topic} value={topic}>
+                            {topic}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Render type-specific form for child questions */}
                 {renderSubQuestionTypeForm()}
                 
                 <div className="flex justify-end gap-2 mt-2">
@@ -1467,7 +1533,7 @@ const CreateQuestionPaper = () => {
                                     </Select>
                                   </div>
                                   
-                                  {selectedQuestionType !== "Composite" && (
+                                  {selectedQuestionType !== "Nested" && (
                                     <div>
                                       <Label htmlFor="new-question-marks">Marks</Label>
                                       <Select
