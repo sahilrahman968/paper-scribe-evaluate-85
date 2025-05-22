@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -1160,7 +1160,7 @@ const CreateQuestionPaper = () => {
                                       updateQuestion(section.id, question.id, "topic", "");
                                     }}
                                   >
-                                    <SelectTrigger className="h-8 text-xs">
+                                    <SelectTrigger>
                                       <SelectValue placeholder="Select chapter" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1181,8 +1181,8 @@ const CreateQuestionPaper = () => {
                                     onValueChange={(value) => updateQuestion(section.id, question.id, "topic", value)}
                                     disabled={!question.chapter}
                                   >
-                                    <SelectTrigger className="h-8 text-xs">
-                                      <SelectValue placeholder="Select topic" />
+                                    <SelectTrigger>
+                                      <SelectValue placeholder={!question.chapter ? "Select chapter first" : "Select topic"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {question.chapter && 
@@ -1364,18 +1364,8 @@ const CreateQuestionPaper = () => {
                                   </div>
                                 </div>
                                 
-                                <div className="space-y-2">
-                                  <Label>Paper Information (Auto-filled)</Label>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div className="border rounded p-2 bg-muted">
-                                      <span className="text-xs font-medium block mb-1">Subject</span>
-                                      <span className="text-sm">{paperSubject || "Not selected"}</span>
-                                    </div>
-                                    <div className="border rounded p-2 bg-muted">
-                                      <span className="text-xs font-medium block mb-1">Class</span>
-                                      <span className="text-sm">{paperClass || "Not selected"}</span>
-                                    </div>
-                                  </div>
+                                <div className="p-4 border rounded-lg bg-muted">
+                                  <p className="text-sm">The AI will generate a question based on your description and selected parameters. The question will be tailored to the subject and class level of this question paper.</p>
                                 </div>
                               </TabsContent>
                               
