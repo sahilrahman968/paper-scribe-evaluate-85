@@ -3,48 +3,8 @@ import { useState, useEffect, forwardRef } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import "katex/dist/katex.min.css";
-import BlotFormatter from "quill-blot-formatter";
-import ImageUploader from "quill-image-uploader";
 import { cn } from "@/lib/utils";
 import katex from "katex";
-import Quill from "quill";
-
-let Parchment = null;
-if (typeof window !== "undefined") {
-  // Only run this code on the client side
-  Parchment = Quill.import("parchment");
-  
-  // Add Katex formula module
-  const BlockEmbed = Quill.import("blots/block/embed");
-  
-  class FormulaBlot extends BlockEmbed {
-    static create(value) {
-      const node = super.create();
-      // Set formula value and render using KaTeX
-      if (value) {
-        node.setAttribute("data-formula", value);
-        katex.render(value, node, {
-          throwOnError: false,
-          displayMode: true
-        });
-      }
-      return node;
-    }
-
-    static value(node) {
-      return node.getAttribute("data-formula");
-    }
-  }
-  
-  // Define static properties on the class after declaration
-  FormulaBlot.blotName = "formula";
-  FormulaBlot.tagName = "DIV";
-  FormulaBlot.className = "ql-formula";
-  
-  Quill.register(FormulaBlot);
-  Quill.register("modules/blotFormatter", BlotFormatter);
-  Quill.register("modules/imageUploader", ImageUploader);
-}
 
 // Define the toolbar modules for our editor
 const toolbarOptions = [
@@ -72,8 +32,50 @@ const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(
     const [quillRef, setQuillRef] = useState<any>(null);
     const [mounted, setMounted] = useState(false);
     
+    // Set up Quill and modules on client-side only
     useEffect(() => {
       setMounted(true);
+      
+      if (typeof window !== "undefined") {
+        // Dynamic imports to avoid SSR issues
+        import("quill").then(module => {
+          const Quill = module.default;
+          
+          // Register Katex formula module
+          const BlockEmbed = Quill.import("blots/block/embed");
+          
+          class FormulaBlot extends BlockEmbed {
+            static create(value: string) {
+              const node = super.create();
+              if (value) {
+                node.setAttribute("data-formula", value);
+                katex.render(value, node, {
+                  throwOnError: false,
+                  displayMode: true
+                });
+              }
+              return node;
+            }
+            
+            static value(node: HTMLElement) {
+              return node.getAttribute("data-formula");
+            }
+          }
+          
+          // Add static properties to FormulaBlot class
+          // @ts-ignore - We know these properties exist for Quill blots
+          FormulaBlot.blotName = "formula";
+          // @ts-ignore
+          FormulaBlot.tagName = "DIV";
+          // @ts-ignore
+          FormulaBlot.className = "ql-formula";
+          
+          Quill.register(FormulaBlot, true);
+          
+          // We're not using these modules for now as they're causing issues
+          // They can be added back later if needed with proper configuration
+        });
+      }
     }, []);
 
     if (!mounted) {
@@ -109,16 +111,6 @@ const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(
               }
             };
           }
-        }
-      },
-      blotFormatter: {},
-      imageUploader: {
-        upload: (file: File) => {
-          return new Promise((resolve, reject) => {
-            // Mock image upload with a random unsplash image
-            const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
-            resolve(mockImageUrl);
-          });
         }
       },
       clipboard: {
