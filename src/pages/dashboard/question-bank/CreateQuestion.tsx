@@ -25,6 +25,7 @@ interface Question {
     questionImage?: string;
     answer?: string;
     marks: number;
+    questionType?: string;
     options?: { text: string; isCorrect: boolean; image?: string }[];
   }[];
   questionImage?: string;
@@ -71,15 +72,6 @@ const CreateQuestion = () => {
   const isEdit = mode === "edit";
   const isCreate = !mode && !id;
 
-  // Define available question types with "nested" removed
-  const questionTypes = [
-    { value: "mcq", label: "Multiple Choice" },
-    { value: "subjective", label: "Subjective" },
-    { value: "truefalse", label: "True/False" },
-    { value: "matching", label: "Matching" },
-    { value: "fillblank", label: "Fill in the Blank" }
-  ];
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -100,7 +92,6 @@ const CreateQuestion = () => {
               initialData={questionData || undefined} 
               isEdit={isEdit}
               isView={isView}
-              questionTypes={questionTypes}
             />
           )}
         </div>
@@ -110,3 +101,4 @@ const CreateQuestion = () => {
 };
 
 export default CreateQuestion;
+

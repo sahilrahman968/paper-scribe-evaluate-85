@@ -1,5 +1,5 @@
 
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { 
   Home, 
@@ -20,9 +20,17 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Default to open
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Initialize sidebarOpen from localStorage if available
+  useEffect(() => {
+    const storedSidebarState = localStorage.getItem("sidebar-state");
+    if (storedSidebarState !== null) {
+      setSidebarOpen(storedSidebarState === "open");
+    }
+  }, []);
 
   const menuItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -39,7 +47,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    const newState = !sidebarOpen;
+    setSidebarOpen(newState);
+    localStorage.setItem("sidebar-state", newState ? "open" : "closed");
   };
 
   return (
@@ -120,7 +130,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <nav className="flex flex-col flex-1 py-4 overflow-y-auto">
             <div className="px-4 space-y-1">
               {menuItems.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = location.pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.name}
@@ -151,7 +161,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </div>
       </div>
 
-      <div className={`transition-all duration-300 lg:pl-64 ${!sidebarOpen ? "lg:pl-20" : ""} flex flex-col`}>
+      {/* Main content - adjust the left padding based on sidebar state */}
+      <div className={`transition-all duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-20"} flex flex-col`}>
         {/* Top navigation */}
         <div className="sticky top-0 z-10 flex-shrink-0 h-16 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between h-full px-4 md:px-6">
@@ -163,7 +174,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 <Menu className="h-6 w-6" />
               </button>
               <h1 className="ml-2 lg:ml-0 text-lg md:text-xl font-medium">
-                {menuItems.find(item => item.href === location.pathname)?.name || "Dashboard"}
+                {menuItems.find(item => location.pathname.startsWith(item.href))?.name || "Dashboard"}
               </h1>
             </div>
             <div className="flex items-center">
@@ -196,3 +207,4 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 };
 
 export default DashboardLayout;
+

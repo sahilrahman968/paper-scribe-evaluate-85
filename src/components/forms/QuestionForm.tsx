@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -48,6 +47,7 @@ interface QuestionFormProps {
       questionImage?: string;
       answer?: string;
       marks: number;
+      questionType?: string;
       options?: { text: string; isCorrect: boolean; image?: string }[];
     }[];
     questionImage?: string;
@@ -72,6 +72,7 @@ type ChildQuestionItem = {
   questionImage?: string;
   answer?: string;
   marks: number;
+  questionType?: string;
   options?: OptionItem[];
 };
 
@@ -121,7 +122,15 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   const classes = ["8", "9", "10", "11", "12"];
   const subjects = ["Physics", "Chemistry", "Biology", "Mathematics", "English", "History"];
   const difficulties = ["Easy", "Medium", "Hard"];
-  const questionTypes = ["subjective", "single-correct", "multiple-correct", "true-false", "fill-in-the-blank", "nested"];
+  
+  // Define available question types with "nested" removed
+  const questionTypes = [
+    { value: "subjective", label: "Subjective" },
+    { value: "single-correct", label: "Single Correct" },
+    { value: "multiple-correct", label: "Multiple Correct" },
+    { value: "true-false", label: "True/False" },
+    { value: "fill-in-the-blank", label: "Fill in the Blank" }
+  ];
   
   const handleInputChange = (field: string, value: string) => {
     setFormData({
@@ -192,6 +201,26 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       ...newChildQuestions[index], 
       [field]: value 
     };
+
+    // Initialize options if changing question type to single-correct or multiple-correct
+    if (field === "questionType") {
+      if (value === "single-correct" || value === "multiple-correct") {
+        if (!newChildQuestions[index].options || newChildQuestions[index].options.length < 2) {
+          newChildQuestions[index].options = [
+            { text: "", isCorrect: false },
+            { text: "", isCorrect: false },
+            { text: "", isCorrect: false },
+            { text: "", isCorrect: false }
+          ];
+        }
+      } else if (value === "true-false") {
+        newChildQuestions[index].options = [
+          { text: "True", isCorrect: false },
+          { text: "False", isCorrect: false }
+        ];
+      }
+    }
+    
     setChildQuestions(newChildQuestions);
   };
   
@@ -262,12 +291,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         question: "", 
         answer: "", 
         marks: 1,
-        options: formData.questionType === "nested" ? [
-          { text: "", isCorrect: false },
-          { text: "", isCorrect: false },
-          { text: "", isCorrect: false },
-          { text: "", isCorrect: false }
-        ] : undefined
+        questionType: "subjective", // Default to subjective
       }
     ]);
   };
@@ -776,7 +800,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
               <SelectValue placeholder="Select question type" />
             </SelectTrigger>
             <SelectContent>
-              {questionTypes.map((type) => (
+              {["subjective", "single-correct", "multiple-correct", "true-false", "fill-in-the-blank", "nested"].map((type) => (
                 <SelectItem key={type} value={type}>
                   {type.charAt(0).toUpperCase() + type.slice(1).replace(/-/g, ' ')}
                 </SelectItem>
@@ -972,8 +996,8 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
                   className="mt-1"
                 />
                 
-                <div className="flex items-center gap-4">
-                  <div className="w-1/4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
                     <Label htmlFor={`childMarks-${index}`}>Marks *</Label>
                     <Input
                       id={`childMarks-${index}`}
@@ -987,19 +1011,184 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
                     />
                   </div>
                   
-                  <div className="flex-1">
-                    <Label htmlFor={`childAnswer-${index}`}>Model Answer</Label>
+                  <div>
+                    <Label htmlFor={`childQuestionType-${index}`}>Question Type *</Label>
+                    <Select
+                      value={childQuestion.questionType || "subjective"}
+                      onValueChange={(value) => handleChildQuestionChange(index, "questionType", value)}
+                      disabled={isView}
+                    >
+                      <SelectTrigger id={`childQuestionType-${index}`}>
+                        <SelectValue placeholder="Select question type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {questionTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Display options for child questions based on selected type */}
+                {childQuestion.questionType === "single-correct" || childQuestion.questionType === "multiple-correct" ? (
+                  <div className="space-y-3 mt-2">
+                    <div className="flex justify-between items-center">
+                      <Label>Options *</Label>
+                      {!isView && (
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => addChildOption(index)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Add Option
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {(childQuestion.options || []).map((option, optionIndex) => (
+                      <div key={optionIndex} className="space-y-2 border p-3 rounded-md">
+                        <div className="flex items-center gap-3">
+                          {childQuestion.questionType === "single-correct" ? (
+                            <RadioGroup 
+                              value={option.isCorrect ? optionIndex.toString() : ""} 
+                              onValueChange={(value) => {
+                                if (!isView) {
+                                  const newChildQuestions = [...childQuestions];
+                                  if (newChildQuestions[index].options) {
+                                    newChildQuestions[index].options = newChildQuestions[index].options!.map((opt, idx) => ({
+                                      ...opt,
+                                      isCorrect: idx.toString() === value
+                                    }));
+                                  }
+                                  setChildQuestions(newChildQuestions);
+                                }
+                              }}
+                            >
+                              <RadioGroupItem value={optionIndex.toString()} id={`child-${index}-option-${optionIndex}`} disabled={isView} />
+                            </RadioGroup>
+                          ) : (
+                            <Checkbox 
+                              checked={option.isCorrect}
+                              onCheckedChange={(checked) => {
+                                if (!isView) {
+                                  handleChildOptionChange(index, optionIndex, "isCorrect", checked === true)
+                                }
+                              }}
+                              id={`child-${index}-option-${optionIndex}`}
+                              disabled={isView}
+                            />
+                          )}
+                          <Input
+                            placeholder={`Option ${optionIndex + 1}`}
+                            value={option.text}
+                            onChange={(e) => handleChildOptionChange(index, optionIndex, "text", e.target.value)}
+                            className="flex-1"
+                            disabled={isView}
+                          />
+                          {!isView && (
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleChildOptionImageUpload(index, optionIndex)}
+                            >
+                              <Image className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {!isView && (childQuestion.options || []).length > 2 && (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => removeChildOption(index, optionIndex)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {option.image && (
+                          <div className="relative h-24 w-full rounded-md overflow-hidden">
+                            <img 
+                              src={option.image} 
+                              alt={`Option ${optionIndex + 1}`} 
+                              className="h-full w-full object-cover" 
+                            />
+                            {!isView && (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2"
+                                onClick={() => {
+                                  const newChildQuestions = [...childQuestions];
+                                  if (newChildQuestions[index].options) {
+                                    newChildQuestions[index].options![optionIndex] = { 
+                                      ...newChildQuestions[index].options![optionIndex], 
+                                      image: undefined 
+                                    };
+                                  }
+                                  setChildQuestions(newChildQuestions);
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : childQuestion.questionType === "true-false" ? (
+                  <div className="space-y-2 mt-2">
+                    <Label>Correct Answer *</Label>
+                    <RadioGroup 
+                      value={childQuestion.options?.findIndex(opt => opt.isCorrect) === 0 ? "true" : "false"}
+                      onValueChange={(value) => {
+                        if (!isView) {
+                          const newChildQuestions = [...childQuestions];
+                          newChildQuestions[index].options = [
+                            { text: "True", isCorrect: value === "true" },
+                            { text: "False", isCorrect: value === "false" }
+                          ];
+                          setChildQuestions(newChildQuestions);
+                        }
+                      }}
+                      disabled={isView}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="true" id={`child-${index}-true`} disabled={isView} />
+                        <Label htmlFor={`child-${index}-true`}>True</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="false" id={`child-${index}-false`} disabled={isView} />
+                        <Label htmlFor={`child-${index}-false`}>False</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <Label htmlFor={`childAnswer-${index}`}>{childQuestion.questionType === "fill-in-the-blank" ? "Answer *" : "Model Answer"}</Label>
                     <Textarea
                       id={`childAnswer-${index}`}
-                      placeholder="Enter model answer (optional)"
+                      placeholder={
+                        childQuestion.questionType === "fill-in-the-blank" 
+                          ? "Enter the correct answer" 
+                          : "Enter model answer (optional)"
+                      }
                       value={childQuestion.answer || ""}
                       onChange={(e) => handleChildQuestionChange(index, "answer", e.target.value)}
                       rows={2}
+                      required={childQuestion.questionType === "fill-in-the-blank"}
                       disabled={isView}
                       className="mt-1"
                     />
                   </div>
-                </div>
+                )}
               </div>
             </div>
           ))}
