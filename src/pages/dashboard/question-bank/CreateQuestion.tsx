@@ -1,5 +1,5 @@
 
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import QuestionForm from "@/components/forms/QuestionForm";
@@ -12,7 +12,6 @@ interface Question {
   subject: string;
   chapter: string;
   topic: string;
-  topics: string[];
   difficulty: string;
   marks: string;
   questionType: string;
@@ -32,11 +31,7 @@ interface Question {
 }
 
 const CreateQuestion = () => {
-  const params = useParams();
-  const navigate = useNavigate();
-  const id = params.id;
-  const mode = params.mode;
-  
+  const { id, mode } = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const [questionData, setQuestionData] = useState<Question | null>(null);
 
@@ -54,7 +49,6 @@ const CreateQuestion = () => {
           subject: "Physics",
           chapter: "Laws of Motion",
           topic: "Newton's Laws",
-          topics: ["Newton's Third Law"],
           difficulty: "Medium",
           marks: "5",
           questionType: "subjective",
