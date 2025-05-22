@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 export function useSidebarCollapse() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
-  // You can add localStorage persistence if needed
+  // Load the saved state from localStorage on component mount
   useEffect(() => {
     const savedState = localStorage.getItem('sidebarCollapsed');
     if (savedState !== null) {

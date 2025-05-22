@@ -12,6 +12,7 @@ interface Question {
   subject: string;
   chapter: string;
   topic: string;
+  topics: string[];
   difficulty: string;
   marks: string;
   questionType: string;
@@ -52,6 +53,7 @@ const CreateQuestion = () => {
           subject: "Physics",
           chapter: "Laws of Motion",
           topic: "Newton's Laws",
+          topics: ["Newton's Third Law"],
           difficulty: "Medium",
           marks: "5",
           questionType: "subjective",

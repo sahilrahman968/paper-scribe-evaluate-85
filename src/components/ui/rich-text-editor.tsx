@@ -6,6 +6,7 @@ import "katex/dist/katex.min.css";
 import BlotFormatter from "quill-blot-formatter";
 import ImageUploader from "quill-image-uploader";
 import { cn } from "@/lib/utils";
+import katex from "katex";
 
 // Import Katex module for formula support
 const Quill = typeof window !== "undefined" ? require("quill") : null;
@@ -70,14 +71,10 @@ const imageHandler = () => {
       // Here we're using a placeholder for demonstration
       const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
       
-      const quill = quillRef.current;
-      const range = quill.getSelection(true);
-      
-      // Insert the image at the cursor position
-      quill.insertEmbed(range.index, 'image', mockImageUrl);
-      
-      // Move cursor after the image
-      quill.setSelection(range.index + 1);
+      // Since quillRef is a local reference in the component, we can't access it here
+      // This function will need to be defined inside the component
+      console.log("Mock image URL generated:", mockImageUrl);
+      // The actual image insertion will happen in the component
     }
   };
 };
@@ -104,7 +101,36 @@ const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(
     }
 
     const modules = {
-      toolbar: toolbarOptions,
+      toolbar: {
+        container: toolbarOptions,
+        handlers: {
+          image: function() {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.click();
+            
+            input.onchange = async () => {
+              if (input.files) {
+                const file = input.files[0];
+                // Mock image URL for demonstration
+                const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
+                
+                // Now we can use quillRef since we're inside the component
+                if (quillRef) {
+                  const range = quillRef.getSelection(true);
+                  
+                  // Insert the image at the cursor position
+                  quillRef.insertEmbed(range.index, 'image', mockImageUrl);
+                  
+                  // Move cursor after the image
+                  quillRef.setSelection(range.index + 1);
+                }
+              }
+            };
+          }
+        }
+      },
       blotFormatter: {},
       imageUploader: {
         upload: (file: File) => {
