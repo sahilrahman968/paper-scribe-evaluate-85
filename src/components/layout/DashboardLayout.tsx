@@ -52,6 +52,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     localStorage.setItem("sidebar-state", newState ? "open" : "closed");
   };
 
+  // Fix for sidebar selection issue - check if current path starts exactly with the menu item href
+  const isActiveRoute = (href: string) => {
+    // Special case for dashboard root to avoid matching all routes
+    if (href === "/dashboard") {
+      return location.pathname === "/dashboard";
+    }
+    // For other routes, check if path starts with the href (but not the root dashboard)
+    return location.pathname.startsWith(href);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Mobile sidebar */}
@@ -79,7 +89,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <nav className="flex flex-col h-full py-4 overflow-y-auto">
           <div className="px-4 space-y-1">
             {menuItems.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActive = isActiveRoute(item.href);
               return (
                 <Link
                   key={item.name}
@@ -130,7 +140,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <nav className="flex flex-col flex-1 py-4 overflow-y-auto">
             <div className="px-4 space-y-1">
               {menuItems.map((item) => {
-                const isActive = location.pathname.startsWith(item.href);
+                const isActive = isActiveRoute(item.href);
                 return (
                   <Link
                     key={item.name}
@@ -174,7 +184,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 <Menu className="h-6 w-6" />
               </button>
               <h1 className="ml-2 lg:ml-0 text-lg md:text-xl font-medium">
-                {menuItems.find(item => location.pathname.startsWith(item.href))?.name || "Dashboard"}
+                {menuItems.find(item => isActiveRoute(item.href))?.name || "Dashboard"}
               </h1>
             </div>
             <div className="flex items-center">
@@ -207,4 +217,3 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 };
 
 export default DashboardLayout;
-

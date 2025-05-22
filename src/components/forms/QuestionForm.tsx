@@ -48,6 +48,8 @@ interface QuestionFormProps {
       answer?: string;
       marks: number;
       questionType?: string;
+      chapter?: string;
+      topic?: string;
       options?: { text: string; isCorrect: boolean; image?: string }[];
     }[];
     questionImage?: string;
@@ -73,6 +75,8 @@ type ChildQuestionItem = {
   answer?: string;
   marks: number;
   questionType?: string;
+  chapter?: string;
+  topic?: string;
   options?: OptionItem[];
 };
 
@@ -123,13 +127,19 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   const subjects = ["Physics", "Chemistry", "Biology", "Mathematics", "English", "History"];
   const difficulties = ["Easy", "Medium", "Hard"];
   
-  // Define available question types with "nested" removed
+  // Define available question types with "nested" removed for child questions
   const questionTypes = [
     { value: "subjective", label: "Subjective" },
     { value: "single-correct", label: "Single Correct" },
     { value: "multiple-correct", label: "Multiple Correct" },
     { value: "true-false", label: "True/False" },
     { value: "fill-in-the-blank", label: "Fill in the Blank" }
+  ];
+
+  // Include nested for parent question type options
+  const parentQuestionTypes = [
+    ...questionTypes,
+    { value: "nested", label: "Nested" }
   ];
   
   const handleInputChange = (field: string, value: string) => {
@@ -292,6 +302,8 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         answer: "", 
         marks: 1,
         questionType: "subjective", // Default to subjective
+        chapter: "", // Add chapter field for child questions
+        topic: "", // Add topic field for child questions
       }
     ]);
   };
@@ -356,6 +368,11 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         
         if (childQuestion.marks <= 0) {
           toast.error(`Child question ${i + 1} marks must be greater than 0`);
+          return false;
+        }
+        
+        if (!childQuestion.chapter) {
+          toast.error(`Child question ${i + 1} chapter is required`);
           return false;
         }
       }
@@ -452,17 +469,26 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
             {
               question: "State Newton's First Law of Motion and give an example from daily life.",
               marks: 3,
-              answer: "Newton's First Law states that an object at rest stays at rest and an object in motion stays in motion with the same speed and in the same direction unless acted upon by an external force."
+              answer: "Newton's First Law states that an object at rest stays at rest and an object in motion stays in motion with the same speed and in the same direction unless acted upon by an external force.",
+              questionType: "subjective",
+              chapter: "Laws of Motion",
+              topic: "Newton's First Law"
             },
             {
               question: "Explain the concept of momentum and its conservation.",
               marks: 3,
-              answer: "Momentum is the product of mass and velocity. The conservation of momentum states that in a closed system, the total momentum remains constant."
+              answer: "Momentum is the product of mass and velocity. The conservation of momentum states that in a closed system, the total momentum remains constant.",
+              questionType: "subjective",
+              chapter: "Laws of Motion",
+              topic: "Momentum"
             },
             {
               question: "A 2kg object moving at 5 m/s collides with a stationary 3kg object. If they stick together after collision, what will be their final velocity?",
               marks: 4,
-              answer: "Using conservation of momentum: m1v1 + m2v2 = (m1 + m2)v_final\n2kg × 5m/s + 3kg × 0m/s = (2kg + 3kg) × v_final\n10kg·m/s = 5kg × v_final\nv_final = 2 m/s"
+              answer: "Using conservation of momentum: m1v1 + m2v2 = (m1 + m2)v_final\n2kg × 5m/s + 3kg × 0m/s = (2kg + 3kg) × v_final\n10kg·m/s = 5kg × v_final\nv_final = 2 m/s",
+              questionType: "subjective",
+              chapter: "Laws of Motion",
+              topic: "Collision and Momentum"
             }
           ];
         } else if (formData.subject === "Mathematics") {
@@ -470,17 +496,26 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
             {
               question: "Solve the quadratic equation: x² - 5x + 6 = 0",
               marks: 2,
-              answer: "Factoring: x² - 5x + 6 = 0\n(x - 3)(x - 2) = 0\nx = 3 or x = 2"
+              answer: "Factoring: x² - 5x + 6 = 0\n(x - 3)(x - 2) = 0\nx = 3 or x = 2",
+              questionType: "subjective",
+              chapter: "Algebra",
+              topic: "Quadratic Equations"
             },
             {
               question: "Calculate the derivative of f(x) = x³ - 4x² + 5x - 7",
               marks: 3,
-              answer: "f'(x) = 3x² - 8x + 5"
+              answer: "f'(x) = 3x² - 8x + 5",
+              questionType: "subjective",
+              chapter: "Calculus",
+              topic: "Derivatives"
             },
             {
               question: "Find the area of a circle with radius 7 cm.",
               marks: 2,
-              answer: "A = πr² = π × 7² = 49π cm²"
+              answer: "A = πr² = π × 7² = 49π cm²",
+              questionType: "subjective",
+              chapter: "Geometry",
+              topic: "Circle"
             }
           ];
         } else {
@@ -488,17 +523,26 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
             {
               question: `Explain the key concepts related to ${formData.topic || "this topic"}.`,
               marks: 3,
-              answer: "The key concepts include..."
+              answer: "The key concepts include...",
+              questionType: "subjective",
+              chapter: "Chapter 1",
+              topic: "Key Concepts"
             },
             {
               question: `Describe the importance of ${formData.topic || "this topic"} in modern applications.`,
               marks: 3,
-              answer: "The importance can be seen in various applications..."
+              answer: "The importance can be seen in various applications...",
+              questionType: "subjective",
+              chapter: "Chapter 2",
+              topic: "Applications"
             },
             {
               question: `Analyze the challenges faced in implementing ${formData.topic || "this topic"}.`,
               marks: 4,
-              answer: "The challenges include..."
+              answer: "The challenges include...",
+              questionType: "subjective",
+              chapter: "Chapter 3",
+              topic: "Challenges"
             }
           ];
         }
@@ -724,27 +768,32 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
           </Select>
         </div>
         
-        <div>
-          <Label htmlFor="chapter">Chapter</Label>
-          <Input
-            id="chapter"
-            placeholder="Enter chapter name"
-            value={formData.chapter}
-            onChange={(e) => handleInputChange("chapter", e.target.value)}
-            disabled={isView || isEdit}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="topic">Topic</Label>
-          <Input
-            id="topic"
-            placeholder="Enter topic name"
-            value={formData.topic}
-            onChange={(e) => handleInputChange("topic", e.target.value)}
-            disabled={isView || isEdit}
-          />
-        </div>
+        {/* Show chapter and topic fields only when not creating a nested question */}
+        {formData.questionType !== "nested" && (
+          <>
+            <div>
+              <Label htmlFor="chapter">Chapter</Label>
+              <Input
+                id="chapter"
+                placeholder="Enter chapter name"
+                value={formData.chapter}
+                onChange={(e) => handleInputChange("chapter", e.target.value)}
+                disabled={isView || isEdit}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="topic">Topic</Label>
+              <Input
+                id="topic"
+                placeholder="Enter topic name"
+                value={formData.topic}
+                onChange={(e) => handleInputChange("topic", e.target.value)}
+                disabled={isView || isEdit}
+              />
+            </div>
+          </>
+        )}
         
         <div>
           <Label htmlFor="marks">Marks *</Label>
@@ -800,9 +849,9 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
               <SelectValue placeholder="Select question type" />
             </SelectTrigger>
             <SelectContent>
-              {["subjective", "single-correct", "multiple-correct", "true-false", "fill-in-the-blank", "nested"].map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1).replace(/-/g, ' ')}
+              {parentQuestionTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -950,6 +999,32 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
               </div>
               
               <div className="space-y-3">
+                {/* Add Chapter and Topic fields for each child question */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <Label htmlFor={`childChapter-${index}`}>Chapter *</Label>
+                    <Input
+                      id={`childChapter-${index}`}
+                      placeholder="Enter chapter name"
+                      value={childQuestion.chapter || ""}
+                      onChange={(e) => handleChildQuestionChange(index, "chapter", e.target.value)}
+                      disabled={isView}
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor={`childTopic-${index}`}>Topic</Label>
+                    <Input
+                      id={`childTopic-${index}`}
+                      placeholder="Enter topic name"
+                      value={childQuestion.topic || ""}
+                      onChange={(e) => handleChildQuestionChange(index, "topic", e.target.value)}
+                      disabled={isView}
+                    />
+                  </div>
+                </div>
+              
                 <div className="flex items-center gap-2">
                   <Label htmlFor={`childQuestion-${index}`}>Question Text *</Label>
                   {!isView && (
