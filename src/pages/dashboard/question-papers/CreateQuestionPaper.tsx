@@ -56,6 +56,7 @@ interface SubQuestion {
   options?: string[];
   correctOption?: number;
   marks: number;
+  type?: string; // Add type property to fix TS errors
 }
 
 interface Section {
@@ -205,10 +206,10 @@ const CreateQuestionPaper = () => {
   const [questionOptions, setQuestionOptions] = useState<string[]>(["", "", "", ""]);
   const [correctOptionIndex, setCorrectOptionIndex] = useState<number>(0);
   const [matchingItems, setMatchingItems] = useState<{left: string, right: string}[]>([
-    {left: "", right: ""},
-    {left: "", right: ""},
-    {left: "", right: ""},
-    {left: "", right: ""}
+    {left: '', right: ''},
+    {left: '', right: ''},
+    {left: '', right: ''},
+    {left: '', right: ''}
   ]);
   
   // State for sub-questions in composite questions
@@ -490,6 +491,97 @@ const CreateQuestionPaper = () => {
   // Calculate total marks from sub-questions
   const calculateSubQuestionMarks = () => {
     return subQuestions.reduce((total, sq) => total + sq.marks, 0);
+  };
+  
+  // Render type-specific form for sub-questions
+  const renderSubQuestionTypeForm = () => {
+    switch (subQuestionType) {
+      case "Multiple Choice":
+        return (
+          <div className="space-y-3 mt-3">
+            <div className="flex justify-between items-center">
+              <h5 className="text-sm font-medium">Multiple Choice Options</h5>
+              <Button 
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSubQuestionOptions([...subQuestionOptions, ""])}
+              >
+                Add Option
+              </Button>
+            </div>
+            
+            {subQuestionOptions.map((option, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <RadioGroup 
+                  value={subQuestionCorrectOption.toString()} 
+                  onValueChange={(value) => setSubQuestionCorrectOption(parseInt(value))}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value={index.toString()} id={`sub-option-${index}`} />
+                  </div>
+                </RadioGroup>
+                <Input
+                  value={option}
+                  onChange={(e) => {
+                    const newOptions = [...subQuestionOptions];
+                    newOptions[index] = e.target.value;
+                    setSubQuestionOptions(newOptions);
+                  }}
+                  placeholder={`Option ${index + 1}`}
+                  className="flex-1"
+                />
+                {subQuestionOptions.length > 2 && (
+                  <Button 
+                    type="button"
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      if (subQuestionOptions.length <= 2) return;
+                      const newOptions = subQuestionOptions.filter((_, i) => i !== index);
+                      setSubQuestionOptions(newOptions);
+                      
+                      // Adjust correctOptionIndex if needed
+                      if (index === subQuestionCorrectOption) {
+                        setSubQuestionCorrectOption(0);
+                      } else if (index < subQuestionCorrectOption) {
+                        setSubQuestionCorrectOption(subQuestionCorrectOption - 1);
+                      }
+                    }}
+                  >
+                    <Trash className="h-4 w-4 text-red-500" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+        
+      case "True/False":
+        return (
+          <div className="space-y-3 mt-3">
+            <h5 className="text-sm font-medium">Select the correct answer:</h5>
+            <RadioGroup 
+              value={subQuestionCorrectOption.toString()} 
+              onValueChange={(value) => setSubQuestionCorrectOption(parseInt(value))}
+            >
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="0" id="sub-true-option" />
+                  <Label htmlFor="sub-true-option">True</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="1" id="sub-false-option" />
+                  <Label htmlFor="sub-false-option">False</Label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+        );
+        
+      default:
+        return null;
+    }
   };
   
   // Handle adding question based on selected method
