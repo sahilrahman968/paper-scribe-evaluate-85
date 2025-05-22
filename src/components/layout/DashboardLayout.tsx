@@ -11,7 +11,6 @@ import {
   X, 
   LogOut, 
   User,
-  Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -37,6 +36,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     localStorage.removeItem("user");
     toast.success("Logged out successfully");
     navigate("/");
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   return (
@@ -93,12 +96,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
-          <div className="flex items-center justify-center h-16 border-b border-gray-200">
-            <Link to="/dashboard" className="font-bold text-xl text-indigo-600">
-              EduAssess
-            </Link>
+      <div className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 transition-all duration-300 ${
+        sidebarOpen ? "lg:w-64" : "lg:w-20"
+      }`}>
+        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between h-16 border-b border-gray-200 px-4">
+            {sidebarOpen ? (
+              <Link to="/dashboard" className="font-bold text-xl text-indigo-600">
+                EduAssess
+              </Link>
+            ) : (
+              <span className="font-bold text-xl text-indigo-600 mx-auto">EA</span>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`${sidebarOpen ? '' : 'mx-auto'}`}
+              onClick={toggleSidebar}
+            >
+              <Menu className="h-5 w-5 text-gray-500" />
+            </Button>
           </div>
           <nav className="flex flex-col flex-1 py-4 overflow-y-auto">
             <div className="px-4 space-y-1">
@@ -114,23 +131,27 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     }`}
                   >
-                    <item.icon className={`mr-3 h-5 w-5 ${isActive ? "text-indigo-500" : "text-gray-400"}`} />
-                    {item.name}
+                    <item.icon className={`${sidebarOpen ? 'mr-3' : 'mx-auto'} h-5 w-5 ${isActive ? "text-indigo-500" : "text-gray-400"}`} />
+                    {sidebarOpen && <span>{item.name}</span>}
                   </Link>
                 );
               })}
             </div>
             <div className="mt-auto px-4">
-              <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
+              <Button 
+                variant="outline" 
+                className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-0'}`} 
+                onClick={handleLogout}
+              >
+                <LogOut className={`${sidebarOpen ? 'mr-2' : ''} h-4 w-4`} />
+                {sidebarOpen && "Logout"}
               </Button>
             </div>
           </nav>
         </div>
       </div>
 
-      <div className="lg:pl-64 flex flex-col">
+      <div className={`transition-all duration-300 lg:pl-64 ${!sidebarOpen ? "lg:pl-20" : ""} flex flex-col`}>
         {/* Top navigation */}
         <div className="sticky top-0 z-10 flex-shrink-0 h-16 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between h-full px-4 md:px-6">
@@ -146,18 +167,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               </h1>
             </div>
             <div className="flex items-center">
-              <div className="hidden md:block">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Search className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <input
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-gray-50 placeholder-gray-500 text-sm focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Search..."
-                    type="search"
-                  />
-                </div>
-              </div>
               <div className="ml-4 relative">
                 <Button 
                   variant="ghost"
