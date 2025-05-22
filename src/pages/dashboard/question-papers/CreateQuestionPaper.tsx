@@ -210,7 +210,6 @@ const CreateQuestionPaper = () => {
   const [correctOptionIndex, setCorrectOptionIndex] = useState<number>(0);
   const [matchingItems, setMatchingItems] = useState<{left: string, right: string}[]>([
     {left: '', right: ''},
-    {left: '', right: ''},
     {left: '', right: ''}
   ]);
   
@@ -274,7 +273,6 @@ const CreateQuestionPaper = () => {
     setCorrectOptionIndex(0);
     setMatchingItems([
       {left: '', right: ''},
-      {left: '', right: ''},
       {left: '', right: ''}
     ]);
     setSubQuestions([]);
@@ -321,34 +319,42 @@ const CreateQuestionPaper = () => {
     );
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     // Calculate total marks
     const marks = calculateTotalMarks();
     
-    // Validate form
-    if (!paperTitle || !paperSubject || !paperClass) {
+    // Validate form - skip some validations for drafts
+    if (!paperTitle) {
+      toast.error("Please provide a title for your question paper");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!isDraft && (!paperSubject || !paperClass)) {
       toast.error("Please fill in all required fields");
       setIsSubmitting(false);
       return;
     }
     
-    // Ensure all sections have at least one question
-    for (const section of sections) {
-      if (section.questions.length === 0) {
-        toast.error(`${section.title} has no questions`);
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Check for empty questions
-      for (const question of section.questions) {
-        if (!question.question.trim()) {
-          toast.error(`${section.title} has an empty question`);
+    // For non-drafts, ensure all sections have at least one question
+    if (!isDraft) {
+      for (const section of sections) {
+        if (section.questions.length === 0) {
+          toast.error(`${section.title} has no questions`);
           setIsSubmitting(false);
           return;
+        }
+        
+        // Check for empty questions
+        for (const question of section.questions) {
+          if (!question.question.trim()) {
+            toast.error(`${section.title} has an empty question`);
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
     }
@@ -356,7 +362,11 @@ const CreateQuestionPaper = () => {
     // Mock submission - in a real implementation this would be an API call
     setTimeout(() => {
       setIsSubmitting(false);
-      toast.success("Question paper created successfully!");
+      if (isDraft) {
+        toast.success("Question paper saved as draft!");
+      } else {
+        toast.success("Question paper created successfully!");
+      }
       navigate("/dashboard/question-papers");
     }, 1000);
   };
@@ -1196,12 +1206,21 @@ const CreateQuestionPaper = () => {
       <div className="space-y-6 relative">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Create Question Paper</h1>
-          <Button 
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Saving..." : "Save Question Paper"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline"
+              onClick={(e) => handleSubmit(e, true)}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save as Draft"}
+            </Button>
+            <Button 
+              onClick={(e) => handleSubmit(e, false)}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save Question Paper"}
+            </Button>
+          </div>
         </div>
         
         <Tabs defaultValue="structure" onValueChange={setActiveTab}>
