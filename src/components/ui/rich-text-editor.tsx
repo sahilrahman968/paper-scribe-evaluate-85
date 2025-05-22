@@ -8,10 +8,12 @@ import ImageUploader from "quill-image-uploader";
 import { cn } from "@/lib/utils";
 import katex from "katex";
 
-// Import Katex module for formula support
-const Quill = typeof window !== "undefined" ? require("quill") : null;
+// Import Quill directly rather than using require
+import Quill from "quill";
+
 let Parchment = null;
-if (Quill) {
+if (typeof window !== "undefined") {
+  // Only run this code on the client side
   Parchment = Quill.import("parchment");
   
   // Add Katex formula module
@@ -56,28 +58,6 @@ const toolbarOptions = [
   ['link', 'image'],
   ['clean']
 ];
-
-// Mock image upload handler - moved inside component
-const imageHandler = () => {
-  const input = document.createElement('input');
-  input.setAttribute('type', 'file');
-  input.setAttribute('accept', 'image/*');
-  input.click();
-  
-  input.onchange = async () => {
-    if (input.files) {
-      const file = input.files[0];
-      // In a real app, you would upload to a server and get a URL
-      // Here we're using a placeholder for demonstration
-      const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
-      
-      // Since quillRef is a local reference in the component, we can't access it here
-      // This function will need to be defined inside the component
-      console.log("Mock image URL generated:", mockImageUrl);
-      // The actual image insertion will happen in the component
-    }
-  };
-};
 
 export interface RichTextEditorProps {
   value: string;
