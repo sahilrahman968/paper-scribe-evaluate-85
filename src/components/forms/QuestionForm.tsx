@@ -741,7 +741,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
               handleInputChange("chapter", value);
               handleInputChange("topics", []);
             }}
-            disabled={isView || isEdit || !formData.subject}
+            disabled={isView || (!formData.subject)}
             required
           >
             <SelectTrigger>
@@ -764,7 +764,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
             selected={formData.topics}
             onChange={(topics) => handleInputChange("topics", topics)}
             placeholder="Select topics"
-            disabled={isView || isEdit || !formData.chapter}
+            disabled={isView || (!formData.chapter)}
           />
         </div>
         

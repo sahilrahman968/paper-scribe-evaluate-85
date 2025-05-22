@@ -35,47 +35,6 @@ const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(
     // Set up Quill and modules on client-side only
     useEffect(() => {
       setMounted(true);
-      
-      if (typeof window !== "undefined") {
-        // Dynamic imports to avoid SSR issues
-        import("quill").then(module => {
-          const Quill = module.default;
-          
-          // Register Katex formula module
-          const BlockEmbed = Quill.import("blots/block/embed");
-          
-          class FormulaBlot extends BlockEmbed {
-            static create(value: string) {
-              const node = super.create();
-              if (value) {
-                node.setAttribute("data-formula", value);
-                katex.render(value, node, {
-                  throwOnError: false,
-                  displayMode: true
-                });
-              }
-              return node;
-            }
-            
-            static value(node: HTMLElement) {
-              return node.getAttribute("data-formula");
-            }
-          }
-          
-          // Add static properties to FormulaBlot class
-          // @ts-ignore - We know these properties exist for Quill blots
-          FormulaBlot.blotName = "formula";
-          // @ts-ignore
-          FormulaBlot.tagName = "DIV";
-          // @ts-ignore
-          FormulaBlot.className = "ql-formula";
-          
-          Quill.register(FormulaBlot, true);
-          
-          // We're not using these modules for now as they're causing issues
-          // They can be added back later if needed with proper configuration
-        });
-      }
     }, []);
 
     if (!mounted) {
