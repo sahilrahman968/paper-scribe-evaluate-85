@@ -19,7 +19,7 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        draft: "bg-gray-400 text-white hover:bg-gray-500", // Adding new draft variant
+        draft: "bg-gray-400 text-white hover:bg-gray-500 border-0", // Made draft variant more visible
       },
       size: {
         default: "h-10 px-4 py-2",
