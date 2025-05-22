@@ -1,6 +1,7 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand, Check, X } from "lucide-react";
+import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand, Check, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -176,6 +177,7 @@ const CreateQuestionPaper = () => {
   const [paperClass, setPaperClass] = useState("");
   const [totalMarks, setTotalMarks] = useState(0);
   const [duration, setDuration] = useState("180");
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [sections, setSections] = useState<Section[]>([
     {
       id: "section-1",
@@ -874,7 +876,7 @@ const CreateQuestionPaper = () => {
   // Preview tab content
   const renderPreview = () => {
     return (
-      <div className="bg-white p-4 md:p-8 rounded-lg shadow">
+      <div className="bg-white p-4 md:p-8 rounded-lg shadow max-h-[80vh] overflow-y-auto">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold">{paperTitle || "Question Paper Title"}</h2>
           <p className="mt-1 text-gray-600">
@@ -927,7 +929,7 @@ const CreateQuestionPaper = () => {
   
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 relative">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Create Question Paper</h1>
           <Button 
@@ -939,10 +941,9 @@ const CreateQuestionPaper = () => {
         </div>
         
         <Tabs defaultValue="structure" onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="structure">Paper Structure</TabsTrigger>
             <TabsTrigger value="questions">Questions</TabsTrigger>
-            <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
           
           <TabsContent value="structure">
@@ -1556,6 +1557,29 @@ const CreateQuestionPaper = () => {
             {renderPreview()}
           </TabsContent>
         </Tabs>
+        
+        {/* Floating preview button */}
+        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="fixed bottom-8 right-8 rounded-full shadow-lg z-10 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Eye className="h-5 w-5" />
+              <span className="sr-only">Preview Question Paper</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[80%]">
+            <DialogHeader>
+              <DialogTitle>Question Paper Preview</DialogTitle>
+              <DialogDescription>
+                Preview how your question paper will look when printed
+              </DialogDescription>
+            </DialogHeader>
+            {renderPreview()}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
