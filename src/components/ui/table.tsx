@@ -28,11 +28,20 @@ TableHeader.displayName = "TableHeader"
 
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement> & { draggable?: boolean }
->(({ className, draggable, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableSectionElement> & { 
+    draggable?: boolean;
+    onDragStart?: React.DragEventHandler<HTMLTableSectionElement>;
+    onDragOver?: React.DragEventHandler<HTMLTableSectionElement>;
+    onDrop?: React.DragEventHandler<HTMLTableSectionElement>;
+  }
+>(({ className, draggable, onDragStart, onDragOver, onDrop, ...props }, ref) => (
   <tbody
     ref={ref}
     className={cn("[&_tr:last-child]:border-0", className)}
+    draggable={draggable}
+    onDragStart={onDragStart}
+    onDragOver={onDragOver}
+    onDrop={onDrop}
     {...props}
   />
 ))
@@ -61,22 +70,32 @@ const TableRow = React.forwardRef<
     onDragOver?: React.DragEventHandler<HTMLTableRowElement>;
     onDrop?: React.DragEventHandler<HTMLTableRowElement>;
     draggable?: boolean;
+    dragData?: string;
   }
->(({ className, isDraggable = false, onDragStart, onDragOver, onDrop, draggable, ...props }, ref) => (
-  <tr
-    ref={ref}
-    className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      isDraggable && "cursor-move",
-      className
-    )}
-    draggable={isDraggable || draggable}
-    onDragStart={onDragStart}
-    onDragOver={onDragOver}
-    onDrop={onDrop}
-    {...props}
-  />
-))
+>(({ className, isDraggable = false, onDragStart, onDragOver, onDrop, draggable, dragData, ...props }, ref) => {
+  const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>) => {
+    if (isDraggable && dragData) {
+      e.dataTransfer.setData("text/plain", dragData);
+      if (onDragStart) onDragStart(e);
+    }
+  };
+
+  return (
+    <tr
+      ref={ref}
+      className={cn(
+        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        isDraggable && "cursor-move",
+        className
+      )}
+      draggable={isDraggable || draggable}
+      onDragStart={handleDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      {...props}
+    />
+  );
+})
 TableRow.displayName = "TableRow"
 
 const TableHead = React.forwardRef<
