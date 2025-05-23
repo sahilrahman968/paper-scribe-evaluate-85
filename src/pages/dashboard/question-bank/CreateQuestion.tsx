@@ -39,30 +39,26 @@ const CreateQuestion = () => {
   useEffect(() => {
     if (id) {
       setIsLoading(true);
-      // Mock API call to fetch question data
+      // Fetch question data from API
       setTimeout(() => {
         // This would be a real API call in production
-        const mockQuestion: Question = {
-          id: parseInt(id),
-          question: "Explain Newton's Third Law of Motion with examples.",
-          board: "CBSE",
-          class: "10",
-          subject: "Physics",
-          chapter: "Laws of Motion",
-          topic: "Newton's Laws",
-          difficulty: "Medium",
-          marks: "5",
-          questionType: "subjective",
-          answer: "Newton's Third Law states that for every action, there is an equal and opposite reaction. This means that when one body exerts a force on another body, the second body exerts a force of equal magnitude but opposite direction on the first body...",
-          rubrics: [
-            { criteria: "Understanding of the law", weight: 30 },
-            { criteria: "Examples provided", weight: 40 },
-            { criteria: "Clear explanation", weight: 30 }
-          ]
-        };
-
-        setQuestionData(mockQuestion);
-        setIsLoading(false);
+        // Removed dummy data and will fetch from API instead
+        fetch(`/api/questions/${id}`)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch question data");
+            }
+            return response.json();
+          })
+          .then(data => {
+            setQuestionData(data);
+          })
+          .catch(error => {
+            console.error("Error fetching question:", error);
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
       }, 500);
     }
   }, [id]);
@@ -71,6 +67,18 @@ const CreateQuestion = () => {
   const isView = mode === "view";
   const isEdit = mode === "edit";
   const isCreate = !mode && !id;
+
+  // Function to log paper details when saving
+  const handleSaveQuestion = (formData: any) => {
+    const paperDetails = {
+      ...formData,
+      createdAt: new Date().toISOString(),
+      status: formData.isDraft ? 'draft' : 'published'
+    };
+    
+    console.log('paperDetails', paperDetails);
+    // Continue with normal form submission
+  };
 
   return (
     <DashboardLayout>
@@ -92,6 +100,7 @@ const CreateQuestion = () => {
               initialData={questionData || undefined} 
               isEdit={isEdit}
               isView={isView}
+              onSave={handleSaveQuestion}
             />
           )}
         </div>
@@ -101,4 +110,3 @@ const CreateQuestion = () => {
 };
 
 export default CreateQuestion;
-
