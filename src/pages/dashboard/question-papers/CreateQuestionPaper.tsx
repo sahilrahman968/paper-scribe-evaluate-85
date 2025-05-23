@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand, Check, X, Eye, GripVertical } from "lucide-react";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { Plus, Trash, ArrowRight, FileText, BookOpen, Wand, Check, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -210,6 +209,8 @@ const CreateQuestionPaper = () => {
   const [correctOptionIndex, setCorrectOptionIndex] = useState<number>(0);
   const [matchingItems, setMatchingItems] = useState<{left: string, right: string}[]>([
     {left: '', right: ''},
+    {left: '', right: ''},
+    {left: '', right: ''},
     {left: '', right: ''}
   ]);
   
@@ -273,6 +274,8 @@ const CreateQuestionPaper = () => {
     setCorrectOptionIndex(0);
     setMatchingItems([
       {left: '', right: ''},
+      {left: '', right: ''},
+      {left: '', right: ''},
       {left: '', right: ''}
     ]);
     setSubQuestions([]);
@@ -319,42 +322,34 @@ const CreateQuestionPaper = () => {
     );
   };
   
-  const handleSubmit = (e: React.FormEvent, isDraft: boolean = false) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     // Calculate total marks
     const marks = calculateTotalMarks();
     
-    // Validate form - skip some validations for drafts
-    if (!paperTitle) {
-      toast.error("Please provide a title for your question paper");
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (!isDraft && (!paperSubject || !paperClass)) {
+    // Validate form
+    if (!paperTitle || !paperSubject || !paperClass) {
       toast.error("Please fill in all required fields");
       setIsSubmitting(false);
       return;
     }
     
-    // For non-drafts, ensure all sections have at least one question
-    if (!isDraft) {
-      for (const section of sections) {
-        if (section.questions.length === 0) {
-          toast.error(`${section.title} has no questions`);
+    // Ensure all sections have at least one question
+    for (const section of sections) {
+      if (section.questions.length === 0) {
+        toast.error(`${section.title} has no questions`);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Check for empty questions
+      for (const question of section.questions) {
+        if (!question.question.trim()) {
+          toast.error(`${section.title} has an empty question`);
           setIsSubmitting(false);
           return;
-        }
-        
-        // Check for empty questions
-        for (const question of section.questions) {
-          if (!question.question.trim()) {
-            toast.error(`${section.title} has an empty question`);
-            setIsSubmitting(false);
-            return;
-          }
         }
       }
     }
@@ -362,11 +357,7 @@ const CreateQuestionPaper = () => {
     // Mock submission - in a real implementation this would be an API call
     setTimeout(() => {
       setIsSubmitting(false);
-      if (isDraft) {
-        toast.success("Question paper saved as draft!");
-      } else {
-        toast.success("Question paper created successfully!");
-      }
+      toast.success("Question paper created successfully!");
       navigate("/dashboard/question-papers");
     }, 1000);
   };
@@ -1172,55 +1163,17 @@ const CreateQuestionPaper = () => {
     );
   };
   
-  // Handle drag end for question reordering
-  const handleDragEnd = (result: any) => {
-    if (!result.destination) return;
-    
-    const { source, destination } = result;
-    const sectionId = source.droppableId;
-    
-    // Only allow reordering within the same section
-    if (source.droppableId !== destination.droppableId) return;
-    
-    // Find the correct section
-    const sectionIndex = sections.findIndex(section => section.id === sectionId);
-    if (sectionIndex === -1) return;
-    
-    // Create a copy of the questions array
-    const updatedSections = [...sections];
-    const questions = [...updatedSections[sectionIndex].questions];
-    
-    // Reorder the questions
-    const [movedQuestion] = questions.splice(source.index, 1);
-    questions.splice(destination.index, 0, movedQuestion);
-    
-    // Update the section with the reordered questions
-    updatedSections[sectionIndex].questions = questions;
-    setSections(updatedSections);
-    
-    toast.success("Question order updated");
-  };
-  
   return (
     <DashboardLayout>
       <div className="space-y-6 relative">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Create Question Paper</h1>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline"
-              onClick={(e) => handleSubmit(e, true)}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : "Save as Draft"}
-            </Button>
-            <Button 
-              onClick={(e) => handleSubmit(e, false)}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : "Save Question Paper"}
-            </Button>
-          </div>
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Saving..." : "Save Question Paper"}
+          </Button>
         </div>
         
         <Tabs defaultValue="structure" onValueChange={setActiveTab}>
@@ -1389,317 +1342,200 @@ const CreateQuestionPaper = () => {
           
           <TabsContent value="questions">
             <div className="space-y-8">
-              <DragDropContext onDragEnd={handleDragEnd}>
-                {sections.map((section) => (
-                  <Card key={section.id} id={section.id}>
-                    <CardHeader>
-                      <CardTitle>{section.title}</CardTitle>
-                      <CardDescription>
-                        {section.instructions || "No instructions provided."}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {section.questions.length > 0 ? (
-                        <Droppable droppableId={section.id}>
-                          {(provided) => (
-                            <div 
-                              className="space-y-4"
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                            >
-                              {section.questions.map((question, qIndex) => (
-                                <Draggable 
-                                  key={question.id} 
-                                  draggableId={question.id} 
-                                  index={qIndex}
-                                >
-                                  {(provided) => (
-                                    <div 
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      className="flex items-start gap-4 border rounded-md p-4 bg-white"
-                                    >
-                                      <div 
-                                        className="flex items-center self-stretch pr-2"
-                                        {...provided.dragHandleProps}
-                                      >
-                                        <GripVertical className="h-5 w-5 text-gray-400" />
-                                      </div>
-                                      
-                                      <div className="flex-grow">
-                                        <div className="flex items-start gap-2 mb-2">
-                                          <span className="text-sm font-medium">Q{qIndex + 1}.</span>
-                                          <div className="flex-grow">
-                                            <p className="mb-1">{question.question}</p>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                              <span className="text-xs px-2 py-1 bg-muted rounded-full">
-                                                {question.type || "N/A"}
-                                              </span>
-                                              {question.chapter && (
-                                                <span className="text-xs px-2 py-1 bg-muted/50 rounded-full">
-                                                  {question.chapter.split(':')[0]}
-                                                </span>
-                                              )}
-                                              {question.topic && (
-                                                <span className="text-xs px-2 py-1 bg-muted/30 rounded-full">
-                                                  {question.topic}
-                                                </span>
-                                              )}
-                                              <span className="text-xs px-2 py-1 bg-primary/10 rounded-full font-medium">
-                                                {question.marks} {question.marks === 1 ? "mark" : "marks"}
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeQuestion(section.id, question.id)}
-                                      >
-                                        <Trash className="h-4 w-4 text-red-500" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
-                            </div>
-                          )}
-                        </Droppable>
-                      ) : (
-                        <div className="py-4 text-center text-gray-500">
-                          No questions added to this section yet.
-                        </div>
-                      )}
-                      <div className="mt-4">
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <Button
-                              variant="outline"
-                              onClick={() => addQuestionToSection(section.id)}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add Question
-                            </Button>
-                          </SheetTrigger>
-                          <SheetContent side="wide" className="overflow-y-auto">
-                            <SheetHeader>
-                              <SheetTitle>Add Question to {section.title}</SheetTitle>
-                              <SheetDescription>
-                                Choose how you want to add a question
-                              </SheetDescription>
-                            </SheetHeader>
-                            
-                            <div className="py-4">
-                              <Tabs defaultValue="manual" onValueChange={(value) => setQuestionAddMethod(value as "manual" | "bank" | "ai")}>
-                                <TabsList className="grid w-full grid-cols-3 mb-6">
-                                  <TabsTrigger value="manual" className="flex items-center gap-1">
-                                    <FileText className="h-3.5 w-3.5" /> Manual
-                                  </TabsTrigger>
-                                  <TabsTrigger value="bank" className="flex items-center gap-1">
-                                    <BookOpen className="h-3.5 w-3.5" /> Question Bank
-                                  </TabsTrigger>
-                                  <TabsTrigger value="ai" className="flex items-center gap-1">
-                                    <Wand className="h-3.5 w-3.5" /> Generate with AI
-                                  </TabsTrigger>
-                                </TabsList>
-                                
-                                <TabsContent value="manual" className="space-y-4">
-                                  <div>
-                                    <Label htmlFor="new-question-text">Question Text</Label>
-                                    <Textarea
-                                      id="new-question-text"
-                                      value={newQuestionText}
-                                      onChange={(e) => setNewQuestionText(e.target.value)}
-                                      placeholder="Enter your question here"
-                                      rows={3}
-                                    />
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                      <Label htmlFor="new-question-type">Question Type</Label>
-                                      <Select
-                                        value={selectedQuestionType}
-                                        onValueChange={setSelectedQuestionType}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {QUESTION_TYPES.map((type) => (
-                                            <SelectItem key={type} value={type}>
-                                              {type}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    
-                                    {selectedQuestionType !== "Nested" && (
-                                      <div>
-                                        <Label htmlFor="new-question-marks">Marks</Label>
-                                        <Select
-                                          value={newQuestionMarks.toString()}
-                                          onValueChange={(value) => setNewQuestionMarks(parseInt(value))}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {[1, 2, 3, 4, 5, 8, 10].map((mark) => (
-                                              <SelectItem key={mark} value={mark.toString()}>
-                                                {mark}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  {renderQuestionTypeForm()}
-                                  
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                      <Label htmlFor="new-question-chapter">Chapter</Label>
-                                      <Select
-                                        value={selectedChapter || ""}
-                                        onValueChange={(value) => {
-                                          setSelectedChapter(value);
-                                          setSelectedTopic(null);
-                                        }}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select chapter" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {CHAPTERS.map((chapter) => (
-                                            <SelectItem key={chapter} value={chapter}>
-                                              {chapter}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    
-                                    <div>
-                                      <Label htmlFor="new-question-topic">Topic</Label>
-                                      <Select
-                                        value={selectedTopic || ""}
-                                        onValueChange={setSelectedTopic}
-                                        disabled={!selectedChapter}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder={!selectedChapter ? "Select chapter first" : "Select topic"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {availableTopics.map((topic) => (
-                                            <SelectItem key={topic} value={topic}>
-                                              {topic}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="p-4 border rounded-lg bg-muted">
-                                    <p className="text-sm">The AI will generate a question based on your description and selected parameters. The question will be tailored to the subject and class level of this question paper.</p>
-                                  </div>
-                                </TabsContent>
-                                
-                                <TabsContent value="bank" className="space-y-4">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <Label>Available Questions</Label>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={toggleAllBankQuestions}
-                                    >
-                                      {areAllBankQuestionsSelected() ? "Deselect All" : "Select All"}
-                                    </Button>
-                                  </div>
-                                  
-                                  <div className="border rounded-lg overflow-hidden">
-                                    <div className="grid grid-cols-12 bg-muted px-3 py-2 text-xs font-semibold">
-                                      <div className="col-span-1"></div>
-                                      <div className="col-span-5">Question</div>
-                                      <div className="col-span-2">Type</div>
-                                      <div className="col-span-3">Chapter/Topic</div>
-                                      <div className="col-span-1 text-right">Marks</div>
-                                    </div>
-                                    
-                                    <div className="divide-y">
-                                      {SAMPLE_QUESTION_BANK.map((question) => (
-                                        <div 
-                                          key={question.id} 
-                                          className={`grid grid-cols-12 px-3 py-2 text-sm hover:bg-muted/50 ${
-                                            selectedBankQuestions.includes(question.id) ? 'bg-secondary/50' : ''
-                                          }`}
-                                          onClick={() => toggleQuestionSelection(question.id)}
-                                        >
-                                          <div className="col-span-1">
-                                            <input 
-                                              type="checkbox" 
-                                              checked={selectedBankQuestions.includes(question.id)}
-                                              onChange={() => {}}
-                                              className="rounded"
-                                            />
-                                          </div>
-                                          <div className="col-span-5 line-clamp-2">{question.question}</div>
-                                          <div className="col-span-2">{question.type}</div>
-                                          <div className="col-span-3 text-xs">
-                                            <div>{question.chapter?.split(":")[0]}</div>
-                                            <div className="text-muted-foreground">{question.topic}</div>
-                                          </div>
-                                          <div className="col-span-1 text-right">{question.marks}</div>
-                                        </div>
+              {sections.map((section) => (
+                <Card key={section.id} id={section.id}>
+                  <CardHeader>
+                    <CardTitle>{section.title}</CardTitle>
+                    <CardDescription>
+                      {section.instructions || "No instructions provided."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {section.questions.length > 0 ? (
+                      <div className="space-y-4">
+                        {section.questions.map((question, qIndex) => (
+                          <div key={question.id} className="flex items-start gap-4 border-b pb-4">
+                            <div className="flex-grow">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-medium">Q{qIndex + 1}.</span>
+                                <Textarea
+                                  value={question.question}
+                                  onChange={(e) => updateQuestion(section.id, question.id, "question", e.target.value)}
+                                  placeholder="Enter question text"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                  <Label htmlFor={`type-${question.id}`} className="text-xs mb-1 block">
+                                    Type
+                                  </Label>
+                                  <Select
+                                    value={question.type || QUESTION_TYPES[0]}
+                                    onValueChange={(value) => updateQuestion(section.id, question.id, "type", value)}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {QUESTION_TYPES.map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                          {type}
+                                        </SelectItem>
                                       ))}
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="text-sm">
-                                    <span className="font-medium">Selected:</span> {selectedBankQuestions.length} questions
-                                  </div>
-                                </TabsContent>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor={`chapter-${question.id}`} className="text-xs mb-1 block">
+                                    Chapter
+                                  </Label>
+                                  <Select
+                                    value={question.chapter || ""}
+                                    onValueChange={(value) => {
+                                      updateQuestion(section.id, question.id, "chapter", value);
+                                      // Reset topic when chapter changes
+                                      updateQuestion(section.id, question.id, "topic", "");
+                                    }}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select chapter" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {CHAPTERS.map((chapter) => (
+                                        <SelectItem key={chapter} value={chapter}>
+                                          {chapter}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor={`topic-${question.id}`} className="text-xs mb-1 block">
+                                    Topic
+                                  </Label>
+                                  <Select
+                                    value={question.topic || ""}
+                                    onValueChange={(value) => updateQuestion(section.id, question.id, "topic", value)}
+                                    disabled={!question.chapter}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder={!question.chapter ? "Select chapter first" : "Select topic"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {question.chapter && 
+                                        TOPICS[question.chapter as keyof typeof TOPICS]?.map((topic) => (
+                                          <SelectItem key={topic} value={topic}>
+                                            {topic}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor={`marks-${question.id}`} className="text-xs mb-1 block">
+                                    Marks
+                                  </Label>
+                                  <Select
+                                    value={question.marks.toString()}
+                                    onValueChange={(value) => updateQuestion(section.id, question.id, "marks", parseInt(value))}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {[1, 2, 3, 4, 5, 8, 10].map((mark) => (
+                                        <SelectItem key={mark} value={mark.toString()}>
+                                          {mark}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeQuestion(section.id, question.id)}
+                            >
+                              <Trash className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center text-gray-500">
+                        No questions added to this section yet.
+                      </div>
+                    )}
+                    <div className="mt-4">
+                      <Sheet>
+                        <SheetTrigger asChild>
+                          <Button
+                            variant="outline"
+                            onClick={() => addQuestionToSection(section.id)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Question
+                          </Button>
+                        </SheetTrigger>
+                        <SheetContent side="wide" className="overflow-y-auto">
+                          <SheetHeader>
+                            <SheetTitle>Add Question to {section.title}</SheetTitle>
+                            <SheetDescription>
+                              Choose how you want to add a question
+                            </SheetDescription>
+                          </SheetHeader>
+                          
+                          <div className="py-4">
+                            <Tabs defaultValue="manual" onValueChange={(value) => setQuestionAddMethod(value as "manual" | "bank" | "ai")}>
+                              <TabsList className="grid w-full grid-cols-3 mb-6">
+                                <TabsTrigger value="manual" className="flex items-center gap-1">
+                                  <FileText className="h-3.5 w-3.5" /> Manual
+                                </TabsTrigger>
+                                <TabsTrigger value="bank" className="flex items-center gap-1">
+                                  <BookOpen className="h-3.5 w-3.5" /> Question Bank
+                                </TabsTrigger>
+                                <TabsTrigger value="ai" className="flex items-center gap-1">
+                                  <Wand className="h-3.5 w-3.5" /> Generate with AI
+                                </TabsTrigger>
+                              </TabsList>
+                              
+                              <TabsContent value="manual" className="space-y-4">
+                                <div>
+                                  <Label htmlFor="new-question-text">Question Text</Label>
+                                  <Textarea
+                                    id="new-question-text"
+                                    value={newQuestionText}
+                                    onChange={(e) => setNewQuestionText(e.target.value)}
+                                    placeholder="Enter your question here"
+                                    rows={3}
+                                  />
+                                </div>
                                 
-                                <TabsContent value="ai" className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                   <div>
-                                    <Label htmlFor="ai-prompt">Describe the question you want to generate</Label>
-                                    <Textarea
-                                      id="ai-prompt"
-                                      value={aiPrompt}
-                                      onChange={(e) => setAiPrompt(e.target.value)}
-                                      placeholder="e.g., Create a multiple choice question about Newton's laws of motion for class 10 physics"
-                                      rows={3}
-                                    />
+                                    <Label htmlFor="new-question-type">Question Type</Label>
+                                    <Select
+                                      value={selectedQuestionType}
+                                      onValueChange={setSelectedQuestionType}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {QUESTION_TYPES.map((type) => (
+                                          <SelectItem key={type} value={type}>
+                                            {type}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                   
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  {selectedQuestionType !== "Nested" && (
                                     <div>
-                                      <Label htmlFor="ai-question-type">Question Type</Label>
-                                      <Select
-                                        value={selectedQuestionType}
-                                        onValueChange={setSelectedQuestionType}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {QUESTION_TYPES.map((type) => (
-                                            <SelectItem key={type} value={type}>
-                                              {type}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    
-                                    <div>
-                                      <Label htmlFor="ai-question-marks">Marks</Label>
+                                      <Label htmlFor="new-question-marks">Marks</Label>
                                       <Select
                                         value={newQuestionMarks.toString()}
                                         onValueChange={(value) => setNewQuestionMarks(parseInt(value))}
@@ -1716,82 +1552,240 @@ const CreateQuestionPaper = () => {
                                         </SelectContent>
                                       </Select>
                                     </div>
+                                  )}
+                                </div>
+                                
+                                {renderQuestionTypeForm()}
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor="new-question-chapter">Chapter</Label>
+                                    <Select
+                                      value={selectedChapter || ""}
+                                      onValueChange={(value) => {
+                                        setSelectedChapter(value);
+                                        setSelectedTopic(null);
+                                      }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select chapter" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {CHAPTERS.map((chapter) => (
+                                          <SelectItem key={chapter} value={chapter}>
+                                            {chapter}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                   
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                      <Label htmlFor="ai-question-chapter">Chapter</Label>
-                                      <Select
-                                        value={selectedChapter || ""}
-                                        onValueChange={(value) => {
-                                          setSelectedChapter(value);
-                                          setSelectedTopic(null);
-                                        }}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select chapter" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {CHAPTERS.map((chapter) => (
-                                            <SelectItem key={chapter} value={chapter}>
-                                              {chapter}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    
-                                    <div>
-                                      <Label htmlFor="ai-question-topic">Topic</Label>
-                                      <Select
-                                        value={selectedTopic || ""}
-                                        onValueChange={setSelectedTopic}
-                                        disabled={!selectedChapter}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder={!selectedChapter ? "Select chapter first" : "Select topic"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {availableTopics.map((topic) => (
-                                            <SelectItem key={topic} value={topic}>
-                                              {topic}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
+                                  <div>
+                                    <Label htmlFor="new-question-topic">Topic</Label>
+                                    <Select
+                                      value={selectedTopic || ""}
+                                      onValueChange={setSelectedTopic}
+                                      disabled={!selectedChapter}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder={!selectedChapter ? "Select chapter first" : "Select topic"} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {availableTopics.map((topic) => (
+                                          <SelectItem key={topic} value={topic}>
+                                            {topic}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                
+                                <div className="p-4 border rounded-lg bg-muted">
+                                  <p className="text-sm">The AI will generate a question based on your description and selected parameters. The question will be tailored to the subject and class level of this question paper.</p>
+                                </div>
+                              </TabsContent>
+                              
+                              <TabsContent value="bank" className="space-y-4">
+                                <div className="flex justify-between items-center mb-2">
+                                  <Label>Available Questions</Label>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={toggleAllBankQuestions}
+                                  >
+                                    {areAllBankQuestionsSelected() ? "Deselect All" : "Select All"}
+                                  </Button>
+                                </div>
+                                
+                                <div className="border rounded-lg overflow-hidden">
+                                  <div className="grid grid-cols-12 bg-muted px-3 py-2 text-xs font-semibold">
+                                    <div className="col-span-1"></div>
+                                    <div className="col-span-5">Question</div>
+                                    <div className="col-span-2">Type</div>
+                                    <div className="col-span-3">Chapter/Topic</div>
+                                    <div className="col-span-1 text-right">Marks</div>
                                   </div>
                                   
-                                  <div className="p-4 border rounded-lg bg-muted">
-                                    <p className="text-sm">The AI will generate a question based on your description and selected parameters. The question will be tailored to the subject and class level of this question paper.</p>
+                                  <div className="divide-y">
+                                    {SAMPLE_QUESTION_BANK.map((question) => (
+                                      <div 
+                                        key={question.id} 
+                                        className={`grid grid-cols-12 px-3 py-2 text-sm hover:bg-muted/50 ${
+                                          selectedBankQuestions.includes(question.id) ? 'bg-secondary/50' : ''
+                                        }`}
+                                        onClick={() => toggleQuestionSelection(question.id)}
+                                      >
+                                        <div className="col-span-1">
+                                          <input 
+                                            type="checkbox" 
+                                            checked={selectedBankQuestions.includes(question.id)}
+                                            onChange={() => {}}
+                                            className="rounded"
+                                          />
+                                        </div>
+                                        <div className="col-span-5 line-clamp-2">{question.question}</div>
+                                        <div className="col-span-2">{question.type}</div>
+                                        <div className="col-span-3 text-xs">
+                                          <div>{question.chapter?.split(":")[0]}</div>
+                                          <div className="text-muted-foreground">{question.topic}</div>
+                                        </div>
+                                        <div className="col-span-1 text-right">{question.marks}</div>
+                                      </div>
+                                    ))}
                                   </div>
-                                </TabsContent>
-                              </Tabs>
-                            </div>
-                            
-                            <SheetFooter>
-                              <SheetClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                              </SheetClose>
-                              <Button 
-                                onClick={handleAddQuestion}
-                                disabled={
-                                  (questionAddMethod === "manual" && !newQuestionText) ||
-                                  (questionAddMethod === "bank" && selectedBankQuestions.length === 0) ||
-                                  (questionAddMethod === "ai" && !aiPrompt) ||
-                                  isGenerating
-                                }
-                              >
-                                {isGenerating ? "Generating..." : "Add Question"}
-                              </Button>
-                            </SheetFooter>
-                          </SheetContent>
-                        </Sheet>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </DragDropContext>
+                                </div>
+                                
+                                <div className="text-sm">
+                                  <span className="font-medium">Selected:</span> {selectedBankQuestions.length} questions
+                                </div>
+                              </TabsContent>
+                              
+                              <TabsContent value="ai" className="space-y-4">
+                                <div>
+                                  <Label htmlFor="ai-prompt">Describe the question you want to generate</Label>
+                                  <Textarea
+                                    id="ai-prompt"
+                                    value={aiPrompt}
+                                    onChange={(e) => setAiPrompt(e.target.value)}
+                                    placeholder="e.g., Create a multiple choice question about Newton's laws of motion for class 10 physics"
+                                    rows={3}
+                                  />
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor="ai-question-type">Question Type</Label>
+                                    <Select
+                                      value={selectedQuestionType}
+                                      onValueChange={setSelectedQuestionType}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {QUESTION_TYPES.map((type) => (
+                                          <SelectItem key={type} value={type}>
+                                            {type}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div>
+                                    <Label htmlFor="ai-question-marks">Marks</Label>
+                                    <Select
+                                      value={newQuestionMarks.toString()}
+                                      onValueChange={(value) => setNewQuestionMarks(parseInt(value))}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {[1, 2, 3, 4, 5, 8, 10].map((mark) => (
+                                          <SelectItem key={mark} value={mark.toString()}>
+                                            {mark}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor="ai-question-chapter">Chapter</Label>
+                                    <Select
+                                      value={selectedChapter || ""}
+                                      onValueChange={(value) => {
+                                        setSelectedChapter(value);
+                                        setSelectedTopic(null);
+                                      }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select chapter" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {CHAPTERS.map((chapter) => (
+                                          <SelectItem key={chapter} value={chapter}>
+                                            {chapter}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div>
+                                    <Label htmlFor="ai-question-topic">Topic</Label>
+                                    <Select
+                                      value={selectedTopic || ""}
+                                      onValueChange={setSelectedTopic}
+                                      disabled={!selectedChapter}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder={!selectedChapter ? "Select chapter first" : "Select topic"} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {availableTopics.map((topic) => (
+                                          <SelectItem key={topic} value={topic}>
+                                            {topic}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                
+                                <div className="p-4 border rounded-lg bg-muted">
+                                  <p className="text-sm">The AI will generate a question based on your description and selected parameters. The question will be tailored to the subject and class level of this question paper.</p>
+                                </div>
+                              </TabsContent>
+                            </Tabs>
+                          </div>
+                          
+                          <SheetFooter>
+                            <SheetClose asChild>
+                              <Button variant="outline">Cancel</Button>
+                            </SheetClose>
+                            <Button 
+                              onClick={handleAddQuestion}
+                              disabled={
+                                (questionAddMethod === "manual" && !newQuestionText) ||
+                                (questionAddMethod === "bank" && selectedBankQuestions.length === 0) ||
+                                (questionAddMethod === "ai" && !aiPrompt) ||
+                                isGenerating
+                              }
+                            >
+                              {isGenerating ? "Generating..." : "Add Question"}
+                            </Button>
+                          </SheetFooter>
+                        </SheetContent>
+                      </Sheet>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
           
