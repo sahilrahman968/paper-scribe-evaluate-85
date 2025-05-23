@@ -56,6 +56,7 @@ interface QuestionFormProps {
   };
   isEdit?: boolean;
   isView?: boolean;
+  onSave?: (formData: any) => void; // Added onSave prop
 }
 
 type RubricItem = {
@@ -80,7 +81,7 @@ type ChildQuestionItem = {
   options?: OptionItem[];
 };
 
-const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: QuestionFormProps) => {
+const QuestionForm = ({ type, initialData, isEdit = false, isView = false, onSave }: QuestionFormProps) => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,7 +128,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   const subjects = ["Physics", "Chemistry", "Biology", "Mathematics", "English", "History"];
   const difficulties = ["Easy", "Medium", "Hard"];
   
-  // Define available question types with "nested" removed for child questions
   const questionTypes = [
     { value: "subjective", label: "Subjective" },
     { value: "single-correct", label: "Single Correct" },
@@ -136,7 +136,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     { value: "fill-in-the-blank", label: "Fill in the Blank" }
   ];
 
-  // Include nested for parent question type options
   const parentQuestionTypes = [
     ...questionTypes,
     { value: "nested", label: "Nested" }
@@ -150,8 +149,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleImageUpload = (field: string) => {
-    // Mock image upload - in a real implementation this would open a file picker
-    // and upload the image to a storage service
     const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
     
     setFormData({
@@ -162,7 +159,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleOptionImageUpload = (index: number) => {
-    // Mock image upload for options
     const mockImageUrl = `https://source.unsplash.com/random/400x300?${Math.random()}`;
     
     const newOptions = [...options];
@@ -175,7 +171,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleChildQuestionImageUpload = (index: number) => {
-    // Mock image upload for child questions
     const mockImageUrl = `https://source.unsplash.com/random/800x600?${Math.random()}`;
     
     const newChildQuestions = [...childQuestions];
@@ -212,7 +207,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       [field]: value 
     };
 
-    // Initialize options if changing question type to single-correct or multiple-correct
     if (field === "questionType") {
       if (value === "single-correct" || value === "multiple-correct") {
         if (!newChildQuestions[index].options || newChildQuestions[index].options.length < 2) {
@@ -253,7 +247,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const handleChildOptionImageUpload = (questionIndex: number, optionIndex: number) => {
-    // Mock image upload for child question options
     const mockImageUrl = `https://source.unsplash.com/random/400x300?${Math.random()}`;
     
     const newChildQuestions = [...childQuestions];
@@ -301,9 +294,9 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         question: "", 
         answer: "", 
         marks: 1,
-        questionType: "subjective", // Default to subjective
-        chapter: "", // Add chapter field for child questions
-        topic: "", // Add topic field for child questions
+        questionType: "subjective", 
+        chapter: "", 
+        topic: "", 
       }
     ]);
   };
@@ -333,19 +326,16 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const validateFormData = () => {
-    // Validate required fields
     if (!formData.board || !formData.class || !formData.subject || !formData.difficulty || !formData.marks) {
       toast.error("Please fill all required fields");
       return false;
     }
     
-    // Validate question text
     if (!formData.question && !formData.parentQuestion && formData.questionType !== "nested") {
       toast.error("Question text is required");
       return false;
     }
     
-    // For nested questions, validate parent question and child questions
     if (formData.questionType === "nested") {
       if (!formData.parentQuestion) {
         toast.error("Parent question text is required for nested questions");
@@ -357,7 +347,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         return false;
       }
       
-      // Validate each child question
       for (let i = 0; i < childQuestions.length; i++) {
         const childQuestion = childQuestions[i];
         
@@ -378,22 +367,18 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       }
     }
     
-    // Validate question type specific fields
     if (formData.questionType === "single-correct" || formData.questionType === "multiple-correct") {
-      // Check if at least two options exist
       if (options.length < 2) {
         toast.error("At least two options are required");
         return false;
       }
       
-      // Check if options have text
       const emptyOptions = options.some(option => !option.text.trim());
       if (emptyOptions) {
         toast.error("All options must have text");
         return false;
       }
       
-      // For single correct, exactly one option should be marked correct
       if (formData.questionType === "single-correct") {
         const correctCount = options.filter(option => option.isCorrect).length;
         if (correctCount !== 1) {
@@ -402,7 +387,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         }
       }
       
-      // For multiple correct, at least one option should be marked correct
       if (formData.questionType === "multiple-correct") {
         const correctCount = options.filter(option => option.isCorrect).length;
         if (correctCount < 1) {
@@ -412,14 +396,12 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       }
     }
     
-    // Validate rubrics for subjective questions
     if (formData.questionType === "subjective") {
       if (rubrics.length === 0) {
         toast.error("At least one evaluation rubric is required for subjective questions");
         return false;
       }
       
-      // Check if rubrics have criteria and weight
       const invalidRubrics = rubrics.some(rubric => 
         !rubric.criteria.trim() || typeof rubric.weight !== 'number' || rubric.weight <= 0
       );
@@ -428,7 +410,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         return false;
       }
       
-      // Check if weights sum up to 100
       const totalWeight = rubrics.reduce((sum, rubric) => sum + rubric.weight, 0);
       if (totalWeight !== 100) {
         toast.error("Rubric weights must sum up to 100%");
@@ -440,7 +421,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
   };
   
   const generateQuestion = async () => {
-    // Validate required fields for AI generation
     if (!formData.board || !formData.class || !formData.subject || !formData.questionType || !formData.difficulty || !formData.marks) {
       toast.error("Please fill syllabus details, question type, difficulty and marks first");
       return;
@@ -448,9 +428,7 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     
     setIsGenerating(true);
     
-    // Mock AI generation - in a real implementation this would call an AI service
     setTimeout(() => {
-      // Generate a question based on the form data and question type
       let generatedQuestion = "";
       let generatedAnswer = "";
       let generatedOptions: OptionItem[] = [];
@@ -458,7 +436,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       let generatedParentQuestion = "";
       let generatedChildQuestions: ChildQuestionItem[] = [];
       
-      // Generate content based on question type and subject
       if (formData.questionType === "nested") {
         generatedParentQuestion = formData.subject === "Physics" 
           ? "Answer the following questions about Newton's Laws of Motion:" 
@@ -626,7 +603,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         generatedAnswer = formData.subject === "Physics" ? "ampere" : "3.14";
       }
       
-      // Update the form with generated content
       if (formData.questionType === "nested") {
         setFormData({
           ...formData,
@@ -663,7 +639,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     
     setIsSubmitting(true);
     
-    // Prepare data for submission
     const questionData = {
       ...formData,
       options: formData.questionType === "single-correct" || formData.questionType === "multiple-correct" || formData.questionType === "true-false" ? options : undefined,
@@ -671,7 +646,10 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
       childQuestions: formData.questionType === "nested" ? childQuestions : undefined
     };
     
-    // Mock submission - in a real implementation this would be an API call
+    if (onSave) {
+      onSave(questionData);
+    }
+    
     setTimeout(() => {
       setIsSubmitting(false);
       toast.success(isEdit ? "Question updated successfully!" : "Question created successfully!");
@@ -683,7 +661,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
     return formData.board && formData.class && formData.subject && formData.questionType && formData.difficulty && formData.marks;
   };
   
-  // Handle question type change
   useEffect(() => {
     if (formData.questionType === "true-false") {
       setOptions([
@@ -768,7 +745,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
           </Select>
         </div>
         
-        {/* Show chapter and topic fields only when not creating a nested question */}
         {formData.questionType !== "nested" && (
           <>
             <div>
@@ -999,7 +975,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
               </div>
               
               <div className="space-y-3">
-                {/* Add Chapter and Topic fields for each child question */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                   <div>
                     <Label htmlFor={`childChapter-${index}`}>Chapter *</Label>
@@ -1107,7 +1082,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
                   </div>
                 </div>
                 
-                {/* Display options for child questions based on selected type */}
                 {childQuestion.questionType === "single-correct" || childQuestion.questionType === "multiple-correct" ? (
                   <div className="space-y-3 mt-2">
                     <div className="flex justify-between items-center">
@@ -1492,7 +1466,6 @@ const QuestionForm = ({ type, initialData, isEdit = false, isView = false }: Que
         </div>
       )}
     </form>
-  );
 };
 
 export default QuestionForm;
