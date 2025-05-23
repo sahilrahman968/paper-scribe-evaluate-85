@@ -44,3 +44,55 @@ const calculateTotalMarks = (questions: any[]): number => {
     return total + (question.marks || 0);
   }, 0);
 };
+
+/**
+ * Constructs a detailed question paper object with the specified structure
+ * 
+ * @param paperTitle The title of the question paper
+ * @param subject The subject of the question paper
+ * @param className The class for which the paper is intended
+ * @param duration The duration of the exam in minutes
+ * @param description Description of the paper
+ * @param sections Array of sections with their questions
+ * @returns The constructed question paper details object
+ */
+export const constructQuestionPaperDetails = (
+  paperTitle: string,
+  subject: string,
+  className: string,
+  duration: number,
+  description: string,
+  sections: any[]
+) => {
+  // Calculate total marks of the paper
+  const marks = sections.reduce((total, section) => {
+    const sectionMarks = section.questions.reduce((sectionTotal: number, question: any) => {
+      return sectionTotal + (Number(question.marks) || 0);
+    }, 0);
+    return total + sectionMarks;
+  }, 0);
+
+  // Construct sections with marks calculation
+  const formattedSections = sections.map(section => {
+    const sectionMarks = section.questions.reduce((total: number, question: any) => {
+      return total + (Number(question.marks) || 0);
+    }, 0);
+
+    return {
+      sectionTitle: section.title,
+      instructions: section.instructions,
+      marks: sectionMarks,
+      questions: section.questions
+    };
+  });
+
+  return {
+    paperTitle,
+    subject,
+    class: className,
+    duration,
+    description,
+    marks,
+    sections: formattedSections
+  };
+};

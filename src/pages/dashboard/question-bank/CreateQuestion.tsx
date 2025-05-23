@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import QuestionForm from "@/components/forms/QuestionForm";
+import { constructQuestionPaperDetails } from "@/utils/paperUtils";
 
 interface Question {
   id: number;
@@ -35,6 +36,17 @@ const CreateQuestion = () => {
   const { id, mode } = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const [questionData, setQuestionData] = useState<Question | null>(null);
+  
+  // Create a state variable for the question paper details
+  const [questionPaperDetails, setQuestionPaperDetails] = useState({
+    paperTitle: "",
+    subject: "",
+    class: "",
+    duration: 0,
+    description: "",
+    marks: 0,
+    sections: []
+  });
 
   useEffect(() => {
     if (id) {
@@ -63,9 +75,44 @@ const CreateQuestion = () => {
 
         setQuestionData(mockQuestion);
         setIsLoading(false);
+        
+        // Update question paper details with the fetched data
+        if (mockQuestion) {
+          // For demonstration, we'll create a sample structure with this question
+          setQuestionPaperDetails(prevDetails => {
+            const updatedDetails = {
+              ...prevDetails,
+              paperTitle: "Physics Test Paper",
+              subject: mockQuestion.subject,
+              class: mockQuestion.class,
+              duration: 60, // Default 60 minutes
+              description: "End of term physics examination",
+              sections: [
+                {
+                  sectionTitle: "Section A",
+                  instructions: "Answer all questions in this section",
+                  marks: Number(mockQuestion.marks),
+                  questions: [mockQuestion]
+                }
+              ]
+            };
+            
+            // Calculate total marks
+            updatedDetails.marks = updatedDetails.sections.reduce((total, section) => {
+              return total + section.marks;
+            }, 0);
+            
+            return updatedDetails;
+          });
+        }
       }, 500);
     }
   }, [id]);
+  
+  // Use effect to log question paper details whenever it changes
+  useEffect(() => {
+    console.log('questionPaperDetails', questionPaperDetails);
+  }, [questionPaperDetails]);
 
   // Determine if we are creating, editing, or viewing a question
   const isView = mode === "view";
